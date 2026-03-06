@@ -1,0 +1,23 @@
+{
+  "name": "telegram-vip-livepix-final",
+  "version": "3.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "register:webhook": "node scripts/register-webhook.js",
+    "make:preview": "node scripts/make-preview.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "basic-auth": "^2.0.1",
+    "better-sqlite3": "^11.6.0",
+    "dotenv": "^17.0.0",
+    "express": "^4.19.2",
+    "googleapis": "^140.0.1",
+    "multer": "^1.4.5-lts.1",
+    "nanoid": "^5.0.7",
+    "telegraf": "^4.16.3"
+  }
+}
