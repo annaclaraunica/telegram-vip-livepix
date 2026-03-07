@@ -1,78 +1,23 @@
 
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Painel Admin</title>
-<style>
-body{background:#111;color:white;font-family:Arial;padding:40px}
-.card{background:#222;padding:20px;margin-bottom:20px}
-input,textarea{width:100%;margin:5px 0;padding:10px}
-button{padding:10px;background:#ff0066;color:white;border:none}
-</style>
-</head>
-
-<body>
-
-<h1>Painel Conteúdos VIP</h1>
-
-<div class="card">
-
-<input id="title" placeholder="Título">
-<textarea id="desc" placeholder="Descrição"></textarea>
-<input id="price" placeholder="Preço centavos">
-<input id="video" placeholder="Preview video URL">
-
-<button onclick="save()">Salvar</button>
-
-</div>
-
-<div id="list"></div>
-
+<!doctype html><html lang="pt-br"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Painel Admin</title>
+<style>body{font-family:Arial;margin:24px;max-width:1200px}h2{margin-top:28px}.card{border:1px solid #ddd;padding:16px;border-radius:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}input,textarea,button{padding:8px}textarea{width:100%;height:70px}.kpi{display:flex;gap:16px;flex-wrap:wrap}.box{border:1px solid #eee;border-radius:10px;padding:12px 14px;min-width:220px}.value{font-size:26px;font-weight:700}</style></head><body>
+<h1>Painel Admin</h1>
+<h2>Faturamento</h2><div class="card"><div class="kpi"><div class="box"><div>Total</div><div class="value" id="kpiTotal">—</div></div><div class="box"><div>VIP</div><div class="value" id="kpiVip">—</div></div><div class="box"><div>Avulso</div><div class="value" id="kpiProduct">—</div></div></div></div>
+<h2>Planos VIP</h2><div class="card"><table id="plansTable"><thead><tr><th>Código</th><th>Nome</th><th>Dias</th><th>Centavos</th></tr></thead><tbody></tbody></table><br/><button onclick="savePlans()">Salvar planos</button></div>
+<h2>Novo conteúdo</h2><div class="card"><form id="productForm"><div><input name="title" placeholder="Título" required style="width:100%"/></div><div><textarea name="description" placeholder="Descrição" required></textarea></div><div><input name="price_cents" type="number" placeholder="Preço em centavos" required/></div><div><input name="drive_file_id" placeholder="Drive File ID" style="width:100%"/></div><div><label>Preview MP4</label><br/><input name="preview_video" type="file" accept="video/mp4"/></div><div><label>Preview GIF</label><br/><input name="preview_gif" type="file" accept="image/gif"/></div><br/><button type="submit">Cadastrar</button> <span id="prodMsg"></span></form></div>
+<h2>Conteúdos</h2><div class="card"><table><thead><tr><th>ID</th><th>Título</th><th>Preço</th><th>Drive</th><th>Preview</th><th>Ações</th></tr></thead><tbody id="productsTable"></tbody></table></div>
+<h2>Pedidos</h2><div class="card"><table><thead><tr><th>ID</th><th>User</th><th>Tipo</th><th>Plano/Prod</th><th>Status</th><th>Ref</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
+<h2>VIPs</h2><div class="card"><table><thead><tr><th>User</th><th>Expira</th></tr></thead><tbody id="vipsTable"></tbody></table></div>
 <script>
-
-async function load(){
-
-const r=await fetch("/admin/api/products")
-const data=await r.json()
-
-const el=document.getElementById("list")
-el.innerHTML=""
-
-data.forEach(p=>{
-
-el.innerHTML+=`
-<div class="card">
-<h3>${p.title}</h3>
-<p>${p.description}</p>
-<p>R$ ${(p.price_cents/100).toFixed(2)}</p>
-</div>
-`
-
-})
-
-}
-
-async function save(){
-
-await fetch("/admin/api/products",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-title:title.value,
-description:desc.value,
-price_cents:Number(price.value),
-preview_video_url:video.value
-})
-})
-
-load()
-
-}
-
-load()
-
-</script>
-
-</body>
-</html>
+const money=c=>"R$ "+(Number(c||0)/100).toFixed(2).replace(".",",");
+async function j(u,o){const r=await fetch(u,o);if(!r.ok) throw new Error(await r.text()); return r.json();}
+async function loadStats(){const s=await j("/admin/api/stats");kpiTotal.textContent=money(s.total);kpiVip.textContent=money(s.vip);kpiProduct.textContent=money(s.product);}
+async function loadPlans(){const plans=await j("/admin/api/plans");const tb=document.querySelector("#plansTable tbody");tb.innerHTML="";plans.forEach(p=>tb.insertAdjacentHTML("beforeend",`<tr><td>${p.code}</td><td><input value="${p.label}" data-code="${p.code}" data-k="label"></td><td><input type="number" value="${p.days}" data-code="${p.code}" data-k="days"></td><td><input type="number" value="${p.amount_cents}" data-code="${p.code}" data-k="amount_cents"></td></tr>`))}
+async function savePlans(){const inputs=[...document.querySelectorAll("#plansTable input")];const by={};inputs.forEach(i=>{const c=i.dataset.code;by[c]=by[c]||{code:c};by[c][i.dataset.k]=i.value});await j("/admin/api/plans",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plans:Object.values(by).map(p=>({code:p.code,label:p.label,days:Number(p.days),amount_cents:Number(p.amount_cents)}))})});}
+async function loadProducts(){const rows=await j("/admin/api/products");productsTable.innerHTML="";rows.forEach(p=>{const prev=p.preview_video_url?`<a href="${p.preview_video_url}" target="_blank">mp4</a>`:(p.preview_gif_url?`<a href="${p.preview_gif_url}" target="_blank">gif</a>`:"");productsTable.insertAdjacentHTML("beforeend",`<tr><td>${p.id}</td><td>${p.title}</td><td>${money(p.price_cents)}</td><td>${p.drive_file_id||""}</td><td>${prev}</td><td><button onclick="delProduct(${p.id})">Excluir</button></td></tr>`)})}
+async function delProduct(id){if(!confirm("Excluir?")) return; await j("/admin/api/products/"+id,{method:"DELETE"}); await loadProducts();}
+productForm.addEventListener("submit", async (e)=>{e.preventDefault(); const fd=new FormData(e.target); prodMsg.textContent="Enviando..."; try{const r=await fetch("/admin/api/products",{method:"POST",body:fd}); if(!r.ok) throw new Error(await r.text()); prodMsg.textContent="✅"; e.target.reset(); await loadProducts();}catch(err){console.error(err); prodMsg.textContent="❌";}});
+async function loadOrders(){const rows=await j("/admin/api/orders");ordersTable.innerHTML="";rows.forEach(o=>ordersTable.insertAdjacentHTML("beforeend",`<tr><td>${o.id}</td><td>${o.telegram_user_id}</td><td>${o.kind}</td><td>${o.kind==="vip"?(o.plan_code||""):(o.product_id||"")}</td><td>${o.status}</td><td>${o.reference||""}</td></tr>`))}
+async function loadVips(){const rows=await j("/admin/api/vips");vipsTable.innerHTML="";rows.forEach(v=>vipsTable.insertAdjacentHTML("beforeend",`<tr><td>${v.telegram_user_id}</td><td>${new Date(v.expires_at).toLocaleString("pt-BR")}</td></tr>`))}
+(async()=>{await loadStats(); await loadPlans(); await loadProducts(); await loadOrders(); await loadVips();})();
+</script></body></html>
