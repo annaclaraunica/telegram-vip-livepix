@@ -1,3 +1,4 @@
+
 const Database = require("better-sqlite3")
 
 const db = new Database("app.db")
@@ -43,11 +44,6 @@ created_at TEXT DEFAULT CURRENT_TIMESTAMP
 CREATE TABLE IF NOT EXISTS user_emails (
 telegram_user_id TEXT PRIMARY KEY,
 email TEXT
-);
-
-CREATE TABLE IF NOT EXISTS ui_state (
-telegram_user_id TEXT PRIMARY KEY,
-avulso_index INTEGER DEFAULT 0
 );
 
 `)
