@@ -194,5 +194,22 @@ setInterval(()=>marketingJob().catch(console.error), 6*60*60*1000);
 setInterval(()=>removeExpiredUsersJob().catch(console.error), 30*60*1000);
 setInterval(()=>revokeExpiredDriveAccessJob().catch(console.error), 60*60*1000);
 
-async function main(){ const port=Number(process.env.PORT||3000); app.listen(port, ()=>console.log(`HTTP on :${port}`)); await bot.launch(); console.log("BOT ONLINE"); }
+async function main() {
+  const port = Number(process.env.PORT || 3000);
+
+  app.use(bot.webhookCallback("/telegram"));
+
+  app.listen(port, async () => {
+    console.log(`HTTP on :${port}`);
+
+    if (process.env.PUBLIC_URL) {
+      const webhookUrl = `${process.env.PUBLIC_URL}/telegram`;
+      await bot.telegram.setWebhook(webhookUrl);
+      console.log("✅ Telegram webhook set:", webhookUrl);
+    }
+
+    console.log("BOT ONLINE");
+  });
+}
+
 main();
