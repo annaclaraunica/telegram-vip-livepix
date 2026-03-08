@@ -1,6 +1,6 @@
 {
-  "name": "telegram-vip-livepix-revised",
-  "version": "4.1.0",
+  "name": "telegram-vip-livepix-ultra",
+  "version": "5.0.0",
   "private": true,
   "type": "commonjs",
   "main": "src/index.js",

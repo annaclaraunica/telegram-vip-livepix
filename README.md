@@ -1,1 +1,1 @@
-Versão FINAL (sem afiliados). Veja README no chat.
+Projeto Ultra Final: VIP + Avulso + Drive + Admin + grupo free + remarketing comportamental.
