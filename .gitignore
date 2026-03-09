@@ -1,5 +1,3 @@
 node_modules
 .env
 app.db
-uploads
-.DS_Store
