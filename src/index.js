@@ -12,8 +12,9 @@ const {
   grantFileToEmail,
   revokePermission,
   listFolderFiles,
-  driveDirectUrl,
   driveViewUrl,
+  downloadDriveFileBuffer,
+  getDriveFileMeta,
 } = require("./drive");
 const {
   mainMenu,
@@ -36,6 +37,7 @@ const MENU_MEDIA_MODE = String(process.env.MENU_MEDIA_MODE || "auto").toLowerCas
 const TELEGRAM_SEND_TIMEOUT_MS = Number(process.env.TELEGRAM_SEND_TIMEOUT_MS || 20000);
 const JOB_SEND_DELAY_MS = Number(process.env.JOB_SEND_DELAY_MS || 900);
 const INVITE_TTL_MINUTES = 15;
+const MAX_PREVIEW_MB = Number(process.env.MAX_PREVIEW_MB || 45);
 
 const sendQueue = new AsyncQueue({ delayMs: JOB_SEND_DELAY_MS });
 const jobLocks = new Set();
@@ -158,11 +160,9 @@ function getUserBehavior(userId) {
   const previews = rows.filter((r) => r.event === "view_preview").length;
   const buys = rows.filter((r) => r.event === "buy_click").length;
   const lastViewed = rows.find((r) => r.event === "view_preview")?.product_id || null;
-
   let segment = "cold";
   if (previews >= 3 || buys >= 1) segment = "hot";
   else if (previews >= 1) segment = "warm";
-
   return { previews, buys, lastViewed, segment };
 }
 
@@ -182,9 +182,7 @@ function socialProof(product) {
 }
 
 const getMenuMedia = (key) => db.prepare("SELECT * FROM menu_media WHERE menu_key=?").get(String(key)) || null;
-const mediaUrl = (id) => (id ? driveDirectUrl(id) : null);
 const mediaKind = (m) => (m === "gif" ? "gif" : "video");
-const productPreviewUrl = (p) => mediaUrl(p.preview_drive_file_id);
 const productPreviewKind = (p) => mediaKind(p.preview_mime);
 
 async function queueTelegram(task) {
@@ -209,21 +207,58 @@ async function safeTelegramSendMessage(chatId, text, extra = {}) {
   }
 }
 
+function pickFilename(fileId, meta, kind) {
+  const original = meta?.name || "";
+  if (original) return original;
+  return `${fileId}.${kind === "gif" ? "gif" : "mp4"}`;
+}
+
+async function buildDriveInputFile(fileId, kind) {
+  const meta = await getDriveFileMeta(fileId);
+  const sizeBytes = Number(meta?.size || 0);
+  if (sizeBytes && sizeBytes > MAX_PREVIEW_MB * 1024 * 1024) {
+    throw new Error(`preview too large (${Math.round(sizeBytes / 1024 / 1024)}MB)`);
+  }
+  const buffer = await downloadDriveFileBuffer(fileId);
+  return {
+    input: { source: buffer, filename: pickFilename(fileId, meta, kind) },
+    meta,
+  };
+}
+
+async function sendMediaFromDriveToContext(ctx, { fileId, kind, caption, extra = {} }) {
+  const { input } = await buildDriveInputFile(fileId, kind);
+  if (kind === "gif") {
+    return queueTelegram(() => ctx.replyWithAnimation(input, { caption, ...extra }));
+  }
+  return queueTelegram(() => ctx.replyWithVideo(input, { caption, ...extra }));
+}
+
+async function sendMediaFromDriveToChat(chatId, { fileId, kind, caption, extra = {} }) {
+  const { input } = await buildDriveInputFile(fileId, kind);
+  if (kind === "gif") {
+    return queueTelegram(() => bot.telegram.sendAnimation(chatId, input, { caption, ...extra }));
+  }
+  return queueTelegram(() => bot.telegram.sendVideo(chatId, input, { caption, ...extra }));
+}
+
 async function safeSendMenuWithMedia(ctx, key, fallback, markup) {
   const row = getMenuMedia(key);
-  const url = mediaUrl(row?.preview_drive_file_id);
+  const fileId = row?.preview_drive_file_id || null;
   const kind = mediaKind(row?.preview_mime);
   const caption = row?.caption || fallback;
 
-  if (!url || MENU_MEDIA_MODE === "off") {
+  if (!fileId || MENU_MEDIA_MODE === "off") {
     return safeReply(ctx, caption, markup);
   }
 
   try {
-    if (kind === "gif") {
-      return await queueTelegram(() => ctx.replyWithAnimation(url, { caption, ...markup }));
-    }
-    return await queueTelegram(() => ctx.replyWithVideo(url, { caption, ...markup }));
+    return await sendMediaFromDriveToContext(ctx, {
+      fileId,
+      kind,
+      caption,
+      extra: markup,
+    });
   } catch (error) {
     log("menu media fallback:", error.message);
     return safeReply(ctx, caption, markup);
@@ -274,36 +309,17 @@ async function showProduct(ctx, idx) {
   const header = p.tagline ? `*${p.tagline}*\n` : "";
   const caption = `${socialProof(p)}\n\n${header}🎬 *${p.title}*\n\n${p.description}\n\n💰 R$ ${(p.price_cents / 100).toFixed(2).replace(".", ",")}\n\n_Se esse preview chamou sua atenção, esse é o próximo passo._`;
   const keyboard = avulsoKeyboard({ idx: safe, total, productId: p.id, freeGroupUrl: FREE_GROUP_URL });
-  const url = productPreviewUrl(p);
+  const fileId = p.preview_drive_file_id || null;
   const kind = productPreviewKind(p);
 
-  if (url && MENU_MEDIA_MODE !== "off") {
+  if (fileId && MENU_MEDIA_MODE !== "off") {
     try {
-      if (ctx.updateType === "callback_query") {
-        try {
-          await withTimeout(
-            ctx.editMessageMedia(
-              {
-                type: kind === "gif" ? "animation" : "video",
-                media: url,
-                caption,
-                parse_mode: "Markdown",
-              },
-              keyboard
-            ),
-            TELEGRAM_SEND_TIMEOUT_MS,
-            "edit_message_media"
-          );
-          return;
-        } catch (error) {
-          log("editMessageMedia fallback:", error.message);
-        }
-      }
-
-      if (kind === "gif") {
-        return await queueTelegram(() => ctx.replyWithAnimation(url, { caption, parse_mode: "Markdown", ...keyboard }));
-      }
-      return await queueTelegram(() => ctx.replyWithVideo(url, { caption, parse_mode: "Markdown", ...keyboard }));
+      return await sendMediaFromDriveToContext(ctx, {
+        fileId,
+        kind,
+        caption,
+        extra: { parse_mode: "Markdown", ...keyboard },
+      });
     } catch (error) {
       log("showProduct media fallback:", error.message);
     }
@@ -348,7 +364,7 @@ async function processPendingGrantsForUser(ctx, email) {
 }
 
 async function sendMarketingMessage(userId, product, extraText) {
-  const url = productPreviewUrl(product);
+  const fileId = product.preview_drive_file_id || null;
   const kind = productPreviewKind(product);
   const line = product.tagline ? `*${product.tagline}*\n` : "";
   const caption = `${extraText}\n\n${socialProof(product)}\n\n${line}🎬 *${product.title}*\n💰 R$ ${(product.price_cents / 100).toFixed(2).replace(".", ",")}\n\n_Se você já parou nesse preview, esse é o conteúdo que vale liberar._`;
@@ -362,12 +378,14 @@ async function sendMarketingMessage(userId, product, extraText) {
     ],
   };
 
-  if (url && MENU_MEDIA_MODE !== "off") {
+  if (fileId && MENU_MEDIA_MODE !== "off") {
     try {
-      if (kind === "gif") {
-        return await queueTelegram(() => bot.telegram.sendAnimation(userId, url, { caption, parse_mode: "Markdown", reply_markup }));
-      }
-      return await queueTelegram(() => bot.telegram.sendVideo(userId, url, { caption, parse_mode: "Markdown", reply_markup }));
+      return await sendMediaFromDriveToChat(userId, {
+        fileId,
+        kind,
+        caption,
+        extra: { parse_mode: "Markdown", reply_markup },
+      });
     } catch (error) {
       log("marketing media fallback:", error.message);
     }
@@ -756,30 +774,30 @@ app.post("/admin/api/import-drive-folder", requireAdmin, async (req, res) => {
       .trim()
       .toLowerCase();
 
-    const previews = new Map()
+    const previews = new Map();
     for (const f of only) {
       if (/(^|[_\- ])preview($|[_\- ])/i.test(f.name) || /[_\- ]preview\./i.test(f.name) || /\(preview\)/i.test(f.name)) {
-        previews.set(normalize(f.name), f)
+        previews.set(normalize(f.name), f);
       }
     }
 
     const exists = db.prepare("SELECT id FROM products WHERE drive_file_id=? LIMIT 1");
     const ins = db.prepare("INSERT INTO products (title,tagline,description,price_cents,drive_file_id,preview_drive_file_id,preview_mime,sort_order) VALUES (?,?,?,?,?,?,?,?)");
-    let created = 0
+    let created = 0;
 
     db.transaction(() => {
       for (const f of only) {
-        if (/(^|[_\- ])preview($|[_\- ])/i.test(f.name) || /[_\- ]preview\./i.test(f.name) || /\(preview\)/i.test(f.name)) continue
-        if (exists.get(String(f.id))) continue
-        const key = normalize(f.name)
-        const preview = previews.get(key) || null
-        const mime = preview && /gif/i.test(preview.mimeType || "") ? "gif" : "video"
-        ins.run(String(f.name || "Conteúdo"), "", desc, price, String(f.id), preview ? String(preview.id) : null, mime, 0)
-        created++
+        if (/(^|[_\- ])preview($|[_\- ])/i.test(f.name) || /[_\- ]preview\./i.test(f.name) || /\(preview\)/i.test(f.name)) continue;
+        if (exists.get(String(f.id))) continue;
+        const key = normalize(f.name);
+        const preview = previews.get(key) || null;
+        const mime = preview && /gif/i.test(preview.mimeType || "") ? "gif" : "video";
+        ins.run(String(f.name || "Conteúdo"), "", desc, price, String(f.id), preview ? String(preview.id) : null, mime, 0);
+        created++;
       }
-    })()
+    })();
 
-    res.json({ ok: true, created, total: only.length })
+    res.json({ ok: true, created, total: only.length });
   } catch (error) {
     log("import-drive-folder error:", error.message);
     res.status(500).json({ ok: false, error: error.message });

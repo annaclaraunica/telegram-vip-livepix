@@ -1,0 +1,1 @@
+Substitua src/index.js e src/drive.js. O bot agora baixa o preview via Drive API e envia upload direto ao Telegram, evitando o erro 'wrong type of the web page content'.\n
