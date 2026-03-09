@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Professional v6</title>
+  <title>Admin Professional Fix</title>
   <style>
-    :root{--bg:#0c0f14;--panel:#151a23;--line:#263043;--text:#eff3f8;--muted:#96a0b2;--acc:#8a5cff;--ok:#22c55e}
+    :root{--bg:#0c0f14;--panel:#151a23;--line:#263043;--text:#eff3f8;--muted:#96a0b2;--acc:#8a5cff;--ok:#22c55e;--warn:#ffb020}
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
     header{padding:22px 26px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(12,15,20,.94);backdrop-filter:blur(8px)}
     main{padding:24px;display:grid;gap:20px}
@@ -15,17 +15,20 @@
     .muted{color:var(--muted)} .kpi{font-size:30px;font-weight:700;margin-top:8px}
     input,textarea,select,button{width:100%;padding:11px 12px;margin-top:8px;border-radius:12px;border:1px solid var(--line);background:#0f141c;color:var(--text)}
     button{background:var(--acc);border:none;font-weight:700;cursor:pointer}
+    button.secondary{background:#1d2431}
     table{width:100%;border-collapse:collapse;font-size:14px}
     th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-    .wrap{overflow:auto;max-height:420px}
+    .wrap{overflow:auto;max-height:520px}
     .inline{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     pre{white-space:pre-wrap;background:#0f141c;padding:12px;border-radius:12px;border:1px solid var(--line)}
+    .ok{color:var(--ok)} .warn{color:var(--warn)}
+    .row-actions{display:flex;gap:8px}
   </style>
 </head>
 <body>
 <header>
-  <h1>Admin Professional v6</h1>
-  <div class="muted">v6 com funil mais forte, campo tagline e importação com preview automático</div>
+  <h1>Admin corrigido</h1>
+  <div class="muted">Inclui edição de preview e aviso visual para produtos sem preview</div>
 </header>
 
 <main>
@@ -64,7 +67,7 @@
       <input id="folder_id" placeholder="Folder ID" />
       <textarea id="folder_desc" rows="4" placeholder="Descrição padrão dos itens importados"></textarea>
       <input id="folder_price" placeholder="Preço em centavos" />
-      <div class="muted">Pareamento automático de preview: `_preview`, `-preview`, `(preview)`</div>
+      <div class="muted">Padrões aceitos: preview, prévia, previa, thumb, capa</div>
       <button onclick="importFolder()">Importar pasta</button>
       <pre id="import-result"></pre>
     </div>
@@ -112,6 +115,7 @@ async function api(url, options={}) {
   try { return JSON.parse(text) } catch { return text }
 }
 let plansCache = [];
+let productsCache = [];
 
 async function loadStats() {
   const d = await api("/admin/api/stats");
@@ -149,20 +153,70 @@ async function savePlans() {
 
 async function loadProducts() {
   const rows = await api("/admin/api/products");
+  productsCache = rows;
   document.getElementById("products-table").innerHTML = `
-    <tr><th>ID</th><th>Título</th><th>Tagline</th><th>Preço</th><th>Preview</th><th>Sort</th><th>Status</th></tr>
-    ${rows.map(r=>`
+    <tr><th>ID</th><th>Título</th><th>Preview</th><th>Status</th><th>Ações</th></tr>
+    ${rows.map((r,i)=>`
       <tr>
         <td>${r.id}</td>
-        <td>${r.title}</td>
-        <td>${r.tagline || ""}</td>
-        <td>${money(r.price_cents)}</td>
-        <td>${r.preview_drive_file_id || ""}</td>
-        <td>${r.sort_order || 0}</td>
-        <td>${Number(r.is_active)!==0 ? "ativo" : "inativo"}</td>
+        <td>
+          <input data-i="${i}" data-k="title" value="${escapeHtml(r.title || "")}">
+          <input data-i="${i}" data-k="tagline" value="${escapeHtml(r.tagline || "")}" placeholder="tagline">
+          <textarea data-i="${i}" data-k="description" rows="3">${escapeHtml(r.description || "")}</textarea>
+          <div class="inline">
+            <input data-i="${i}" data-k="price_cents" value="${r.price_cents || 0}">
+            <input data-i="${i}" data-k="sort_order" value="${r.sort_order || 0}">
+          </div>
+          <input data-i="${i}" data-k="drive_file_id" value="${escapeHtml(r.drive_file_id || "")}" placeholder="conteúdo">
+        </td>
+        <td>
+          <div class="${r.preview_drive_file_id ? "ok" : "warn"}">${r.preview_drive_file_id ? "com preview" : "sem preview"}</div>
+          <input data-i="${i}" data-k="preview_drive_file_id" value="${escapeHtml(r.preview_drive_file_id || "")}" placeholder="preview">
+          <select data-i="${i}" data-k="preview_mime">
+            <option value="video" ${r.preview_mime==="video"?"selected":""}>video</option>
+            <option value="gif" ${r.preview_mime==="gif"?"selected":""}>gif</option>
+          </select>
+        </td>
+        <td>
+          <select data-i="${i}" data-k="is_active">
+            <option value="1" ${Number(r.is_active)!==0?"selected":""}>ativo</option>
+            <option value="0" ${Number(r.is_active)===0?"selected":""}>inativo</option>
+          </select>
+        </td>
+        <td>
+          <div class="row-actions">
+            <button class="secondary" onclick="saveProductRow(${i})">Salvar</button>
+          </div>
+        </td>
       </tr>
     `).join("")}
   `;
+}
+
+function escapeHtml(s) {
+  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+}
+
+async function saveProductRow(i) {
+  document.querySelectorAll(`#products-table [data-i="${i}"]`).forEach(el=>{
+    productsCache[i][el.dataset.k] = el.value;
+  });
+  const p = productsCache[i];
+  await api(`/admin/api/products/${p.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      title: p.title,
+      tagline: p.tagline,
+      description: p.description,
+      price_cents: Number(p.price_cents),
+      sort_order: Number(p.sort_order || 0),
+      drive_file_id: p.drive_file_id,
+      preview_drive_file_id: p.preview_drive_file_id,
+      preview_mime: p.preview_mime || "video",
+      is_active: Number(p.is_active ?? 1)
+    })
+  });
+  await loadProducts();
 }
 
 async function loadOrders() {

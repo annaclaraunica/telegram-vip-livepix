@@ -5,15 +5,20 @@ const { listFolderFiles } = require("../src/drive")
 function normalize(name) {
   return String(name || "")
     .replace(/\.[^.]+$/, "")
-    .replace(/[_\- ]preview$/i, "")
-    .replace(/\(preview\)$/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/[_\- ]?(preview|prévia|previa|thumb|capa)$/i, "")
+    .replace(/\((preview|prévia|previa|thumb|capa)\)$/i, "")
     .trim()
     .toLowerCase()
 }
 
 function isPreview(name) {
   const s = String(name || "")
-  return /[_\- ]preview\./i.test(s) || /\(preview\)/i.test(s) || /(^|[_\- ])preview($|[_\- ])/i.test(s)
+  return (
+    /[_\- ](preview|prévia|previa|thumb|capa)\./i.test(s) ||
+    /\((preview|prévia|previa|thumb|capa)\)/i.test(s) ||
+    /(^|[_\- ])(preview|prévia|previa|thumb|capa)($|[_\- ])/i.test(s)
+  )
 }
 
 async function main() {
