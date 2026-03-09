@@ -1,21 +1,26 @@
 {
-  "name": "telegram-vip-drive-only",
-  "version": "1.0.0",
-  "private": true,
-  "type": "commonjs",
+  "name": "telegram-bot-professional-v6",
+  "version": "6.0.0",
+  "description": "Telegram + LivePix + Google Drive professional bot with stronger funnel and preview auto-pairing",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "register:webhook": "node scripts/register-webhook.js"
+    "dev": "nodemon src/index.js",
+    "register:webhook": "node scripts/register-webhook.js",
+    "list:drive-folder": "node scripts/list-drive-folder.js",
+    "import:drive-folder": "node scripts/import-drive-folder-to-render.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
     "basic-auth": "^2.0.1",
-    "better-sqlite3": "^11.6.0",
-    "dotenv": "^17.0.0",
-    "express": "^4.19.2",
-    "googleapis": "^140.0.1",
-    "nanoid": "^5.0.7",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "googleapis": "^144.0.0",
+    "nanoid": "^5.1.5",
     "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
   }
 }

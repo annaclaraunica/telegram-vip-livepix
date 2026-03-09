@@ -1,1 +1,258 @@
-<!doctype html><html lang='pt-br'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Painel Admin Drive Only</title><style>body{font-family:Arial,sans-serif;margin:24px;max-width:1280px}h2{margin-top:28px}.card{border:1px solid #ddd;padding:16px;border-radius:10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}input,textarea,button,select{padding:8px}textarea{width:100%;height:80px}.small{font-size:12px;color:#666}.kpi{display:flex;gap:16px;flex-wrap:wrap}.box{border:1px solid #eee;border-radius:10px;padding:12px 14px;min-width:220px}.value{font-size:26px;font-weight:700}</style></head><body><h1>Painel Admin Drive Only</h1><h2>Faturamento</h2><div class='card'><div class='kpi'><div class='box'><div>Total</div><div class='value' id='kpiTotal'>—</div></div><div class='box'><div>VIP</div><div class='value' id='kpiVip'>—</div></div><div class='box'><div>Avulso</div><div class='value' id='kpiProduct'>—</div></div></div></div><h2>Planos VIP</h2><div class='card'><table id='plansTable'><thead><tr><th>Código</th><th>Nome</th><th>Dias</th><th>Centavos</th></tr></thead><tbody></tbody></table><br><button onclick='savePlans()'>Salvar planos</button> <span id='plansMsg' class='small'></span></div><h2>Mídia dos menus (por ID do Google Drive)</h2><div class='card'><form id='menuMediaForm'><select name='menu_key'><option value='home'>home</option><option value='vip'>vip</option><option value='avulso'>avulso</option><option value='free'>free</option></select><input name='caption' placeholder='Legenda do menu' style='width:100%;margin-top:8px'><input name='preview_drive_file_id' placeholder='Drive File ID do preview' style='width:100%;margin-top:8px'><select name='preview_mime' style='margin-top:8px'><option value='video'>video</option><option value='gif'>gif</option></select><br><br><button type='submit'>Salvar mídia do menu</button> <span id='menuMsg' class='small'></span></form></div><h2>Novo conteúdo (por IDs do Google Drive)</h2><div class='card'><form id='productForm'><div><input name='title' placeholder='Título' required style='width:100%'></div><div><textarea name='description' placeholder='Descrição' required></textarea></div><div><input name='price_cents' type='number' placeholder='Preço em centavos' required></div><div><input name='drive_file_id' placeholder='Drive File ID do conteúdo completo' style='width:100%'></div><div><input name='preview_drive_file_id' placeholder='Drive File ID do preview' style='width:100%'></div><div><select name='preview_mime'><option value='video'>video</option><option value='gif'>gif</option></select></div><br><button type='submit'>Cadastrar</button> <span id='prodMsg' class='small'></span></form></div><h2>Importar pasta do Google Drive</h2><div class='card'><form id='importForm'><input name='folder_id' placeholder='Folder ID' style='width:100%'><textarea name='description' placeholder='Descrição padrão'></textarea><input name='price_cents' type='number' placeholder='Preço padrão em centavos' value='1990'><br><button type='submit'>Importar pasta</button> <span id='importMsg' class='small'></span></form></div><h2>Conteúdos</h2><div class='card'><table><thead><tr><th>ID</th><th>Título</th><th>Preço</th><th>Drive conteúdo</th><th>Drive preview</th><th>Ações</th></tr></thead><tbody id='productsTable'></tbody></table></div><h2>Pedidos</h2><div class='card'><table><thead><tr><th>ID</th><th>User</th><th>Tipo</th><th>Plano/Prod</th><th>Status</th><th>Ref</th></tr></thead><tbody id='ordersTable'></tbody></table></div><h2>VIPs</h2><div class='card'><table><thead><tr><th>User</th><th>Expira</th></tr></thead><tbody id='vipsTable'></tbody></table></div><script>const money=c=>'R$ '+(Number(c||0)/100).toFixed(2).replace('.',',');async function j(u,o){const r=await fetch(u,o);if(!r.ok) throw new Error(await r.text());return r.json()}async function loadStats(){const s=await j('/admin/api/stats');kpiTotal.textContent=money(s.total);kpiVip.textContent=money(s.vip);kpiProduct.textContent=money(s.product)}async function loadPlans(){const plans=await j('/admin/api/plans');const tb=document.querySelector('#plansTable tbody');tb.innerHTML='';plans.forEach(p=>tb.insertAdjacentHTML('beforeend',`<tr><td>${p.code}</td><td><input value="${p.label}" data-code="${p.code}" data-k="label"></td><td><input type="number" value="${p.days}" data-code="${p.code}" data-k="days"></td><td><input type="number" value="${p.amount_cents}" data-code="${p.code}" data-k="amount_cents"></td></tr>`))}async function savePlans(){const inputs=[...document.querySelectorAll('#plansTable input')];const by={};inputs.forEach(i=>{const c=i.dataset.code;by[c]=by[c]||{code:c};by[c][i.dataset.k]=i.value});await j('/admin/api/plans',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plans:Object.values(by).map(p=>({code:p.code,label:p.label,days:Number(p.days),amount_cents:Number(p.amount_cents)}))})});plansMsg.textContent='✅';setTimeout(()=>plansMsg.textContent='',2000)}async function loadProducts(){const rows=await j('/admin/api/products');productsTable.innerHTML='';rows.forEach(p=>productsTable.insertAdjacentHTML('beforeend',`<tr><td>${p.id}</td><td>${p.title}</td><td>${money(p.price_cents)}</td><td>${p.drive_file_id||''}</td><td>${p.preview_drive_file_id||''}</td><td><button onclick="delProduct(${p.id})">Excluir</button></td></tr>`))}async function delProduct(id){if(!confirm('Excluir?')) return;await j('/admin/api/products/'+id,{method:'DELETE'});await loadProducts()}productForm.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.target);prodMsg.textContent='Enviando...';try{await j('/admin/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(fd.entries()))});prodMsg.textContent='✅';e.target.reset();await loadProducts()}catch(err){console.error(err);prodMsg.textContent='❌'}});menuMediaForm.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.target);menuMsg.textContent='Enviando...';try{await j('/admin/api/menu-media',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(fd.entries()))});menuMsg.textContent='✅';e.target.reset()}catch(err){console.error(err);menuMsg.textContent='❌'}});importForm.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.target);importMsg.textContent='Importando...';try{const r=await j('/admin/api/import-drive-folder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder_id:fd.get('folder_id'),description:fd.get('description'),price_cents:Number(fd.get('price_cents')||0)})});importMsg.textContent=`✅ ${r.created} criados`;await loadProducts()}catch(err){console.error(err);importMsg.textContent='❌'}});async function loadOrders(){const rows=await j('/admin/api/orders');ordersTable.innerHTML='';rows.forEach(o=>ordersTable.insertAdjacentHTML('beforeend',`<tr><td>${o.id}</td><td>${o.telegram_user_id}</td><td>${o.kind}</td><td>${o.kind==='vip'?(o.plan_code||''):(o.product_id||'')}</td><td>${o.status}</td><td>${o.reference||''}</td></tr>`))}async function loadVips(){const rows=await j('/admin/api/vips');vipsTable.innerHTML='';rows.forEach(v=>vipsTable.insertAdjacentHTML('beforeend',`<tr><td>${v.telegram_user_id}</td><td>${new Date(v.expires_at).toLocaleString('pt-BR')}</td></tr>`))}(async()=>{await loadStats();await loadPlans();await loadProducts();await loadOrders();await loadVips()})();</script></body></html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Professional v6</title>
+  <style>
+    :root{--bg:#0c0f14;--panel:#151a23;--line:#263043;--text:#eff3f8;--muted:#96a0b2;--acc:#8a5cff;--ok:#22c55e}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+    header{padding:22px 26px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(12,15,20,.94);backdrop-filter:blur(8px)}
+    main{padding:24px;display:grid;gap:20px}
+    .grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+    .stats{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px}
+    .muted{color:var(--muted)} .kpi{font-size:30px;font-weight:700;margin-top:8px}
+    input,textarea,select,button{width:100%;padding:11px 12px;margin-top:8px;border-radius:12px;border:1px solid var(--line);background:#0f141c;color:var(--text)}
+    button{background:var(--acc);border:none;font-weight:700;cursor:pointer}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+    .wrap{overflow:auto;max-height:420px}
+    .inline{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    pre{white-space:pre-wrap;background:#0f141c;padding:12px;border-radius:12px;border:1px solid var(--line)}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Admin Professional v6</h1>
+  <div class="muted">v6 com funil mais forte, campo tagline e importação com preview automático</div>
+</header>
+
+<main>
+  <section class="stats">
+    <div class="card"><div class="muted">Total</div><div class="kpi" id="k-total">R$ 0,00</div></div>
+    <div class="card"><div class="muted">VIP</div><div class="kpi" id="k-vip">R$ 0,00</div></div>
+    <div class="card"><div class="muted">Conteúdo</div><div class="kpi" id="k-product">R$ 0,00</div></div>
+    <div class="card"><div class="muted">Usuários</div><div class="kpi" id="k-users">0</div></div>
+    <div class="card"><div class="muted">Produtos ativos</div><div class="kpi" id="k-active-products">0</div></div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Novo produto</h2>
+      <input id="title" placeholder="Título" />
+      <input id="tagline" placeholder="Tagline curta (opcional)" />
+      <textarea id="description" rows="4" placeholder="Descrição"></textarea>
+      <div class="inline">
+        <input id="price" placeholder="Preço em centavos" />
+        <input id="sort_order" placeholder="Prioridade (0, 10, 20...)" />
+      </div>
+      <input id="drive_file_id" placeholder="Drive file ID do conteúdo" />
+      <div class="inline">
+        <input id="preview_drive_file_id" placeholder="Drive file ID do preview" />
+        <select id="preview_mime">
+          <option value="video">video</option>
+          <option value="gif">gif</option>
+        </select>
+      </div>
+      <button onclick="saveProduct()">Salvar produto</button>
+      <pre id="save-product-result"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Importar pasta do Drive</h2>
+      <input id="folder_id" placeholder="Folder ID" />
+      <textarea id="folder_desc" rows="4" placeholder="Descrição padrão dos itens importados"></textarea>
+      <input id="folder_price" placeholder="Preço em centavos" />
+      <div class="muted">Pareamento automático de preview: `_preview`, `-preview`, `(preview)`</div>
+      <button onclick="importFolder()">Importar pasta</button>
+      <pre id="import-result"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Mídia do menu</h2>
+      <select id="menu_key">
+        <option value="home">home</option>
+        <option value="vip">vip</option>
+        <option value="free">free</option>
+      </select>
+      <textarea id="menu_caption" rows="3" placeholder="Legenda do menu"></textarea>
+      <div class="inline">
+        <input id="menu_preview_id" placeholder="Drive file ID do preview" />
+        <select id="menu_preview_mime">
+          <option value="video">video</option>
+          <option value="gif">gif</option>
+        </select>
+      </div>
+      <button onclick="saveMenuMedia()">Salvar mídia do menu</button>
+      <pre id="menu-result"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Planos VIP</h2>
+      <div class="wrap"><table id="plans-table"></table></div>
+      <button onclick="savePlans()">Salvar planos</button>
+      <pre id="plans-result"></pre>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card"><h2>Produtos</h2><div class="wrap"><table id="products-table"></table></div></div>
+    <div class="card"><h2>Pedidos</h2><div class="wrap"><table id="orders-table"></table></div></div>
+    <div class="card"><h2>VIPs</h2><div class="wrap"><table id="vips-table"></table></div></div>
+    <div class="card"><h2>Usuários</h2><div class="wrap"><table id="users-table"></table></div></div>
+  </section>
+</main>
+
+<script>
+const money = (c=0) => `R$ ${(Number(c||0)/100).toFixed(2).replace(".", ",")}`;
+async function api(url, options={}) {
+  const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...options });
+  const text = await res.text();
+  try { return JSON.parse(text) } catch { return text }
+}
+let plansCache = [];
+
+async function loadStats() {
+  const d = await api("/admin/api/stats");
+  document.getElementById("k-total").textContent = money(d.total);
+  document.getElementById("k-vip").textContent = money(d.vip);
+  document.getElementById("k-product").textContent = money(d.product);
+  document.getElementById("k-users").textContent = String(d.users || 0);
+  document.getElementById("k-active-products").textContent = String(d.activeProducts || 0);
+}
+
+async function loadPlans() {
+  const rows = await api("/admin/api/plans");
+  plansCache = rows;
+  document.getElementById("plans-table").innerHTML = `
+    <tr><th>Código</th><th>Label</th><th>Dias</th><th>Preço</th><th>Ativo</th></tr>
+    ${rows.map((r,i)=>`
+      <tr>
+        <td>${r.code}</td>
+        <td><input data-i="${i}" data-k="label" value="${r.label}"></td>
+        <td><input data-i="${i}" data-k="days" value="${r.days}"></td>
+        <td><input data-i="${i}" data-k="amount_cents" value="${r.amount_cents}"></td>
+        <td><select data-i="${i}" data-k="active"><option value="1" ${Number(r.active)!==0?"selected":""}>1</option><option value="0" ${Number(r.active)===0?"selected":""}>0</option></select></td>
+      </tr>
+    `).join("")}
+  `;
+}
+
+async function savePlans() {
+  document.querySelectorAll("#plans-table input, #plans-table select").forEach(el=>{
+    plansCache[Number(el.dataset.i)][el.dataset.k] = el.value;
+  });
+  const out = await api("/admin/api/plans", { method:"POST", body: JSON.stringify({ plans: plansCache }) });
+  document.getElementById("plans-result").textContent = JSON.stringify(out, null, 2);
+}
+
+async function loadProducts() {
+  const rows = await api("/admin/api/products");
+  document.getElementById("products-table").innerHTML = `
+    <tr><th>ID</th><th>Título</th><th>Tagline</th><th>Preço</th><th>Preview</th><th>Sort</th><th>Status</th></tr>
+    ${rows.map(r=>`
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.title}</td>
+        <td>${r.tagline || ""}</td>
+        <td>${money(r.price_cents)}</td>
+        <td>${r.preview_drive_file_id || ""}</td>
+        <td>${r.sort_order || 0}</td>
+        <td>${Number(r.is_active)!==0 ? "ativo" : "inativo"}</td>
+      </tr>
+    `).join("")}
+  `;
+}
+
+async function loadOrders() {
+  const rows = await api("/admin/api/orders");
+  document.getElementById("orders-table").innerHTML = `
+    <tr><th>ID</th><th>Tipo</th><th>Ref</th><th>Valor</th><th>Status</th></tr>
+    ${rows.map(r=>`
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.kind}</td>
+        <td>${r.reference || ""}</td>
+        <td>${money(r.amount_cents)}</td>
+        <td>${r.status}</td>
+      </tr>
+    `).join("")}
+  `;
+}
+
+async function loadVips() {
+  const rows = await api("/admin/api/vips");
+  document.getElementById("vips-table").innerHTML = `
+    <tr><th>Usuário</th><th>Expira</th></tr>
+    ${rows.map(r=>`
+      <tr>
+        <td>${r.telegram_user_id}</td>
+        <td>${new Date(Number(r.expires_at)).toLocaleString("pt-BR")}</td>
+      </tr>
+    `).join("")}
+  `;
+}
+
+async function loadUsers() {
+  const rows = await api("/admin/api/users");
+  document.getElementById("users-table").innerHTML = `
+    <tr><th>Usuário</th><th>Score</th><th>Último acesso</th><th>Opt-out</th></tr>
+    ${rows.map(r=>`
+      <tr>
+        <td>${r.telegram_user_id}</td>
+        <td>${r.score || 0}</td>
+        <td>${new Date(Number(r.last_seen_at||0)).toLocaleString("pt-BR")}</td>
+        <td>${Number(r.marketing_opt_out||0)}</td>
+      </tr>
+    `).join("")}
+  `;
+}
+
+async function saveProduct() {
+  const payload = {
+    title: title.value,
+    tagline: tagline.value,
+    description: description.value,
+    price_cents: Number(price.value),
+    sort_order: Number(sort_order.value || 0),
+    drive_file_id: drive_file_id.value,
+    preview_drive_file_id: preview_drive_file_id.value,
+    preview_mime: preview_mime.value
+  };
+  const out = await api("/admin/api/products", { method: "POST", body: JSON.stringify(payload) });
+  document.getElementById("save-product-result").textContent = JSON.stringify(out, null, 2);
+  await loadProducts();
+  await loadStats();
+}
+
+async function saveMenuMedia() {
+  const payload = {
+    menu_key: menu_key.value,
+    caption: menu_caption.value,
+    preview_drive_file_id: menu_preview_id.value,
+    preview_mime: menu_preview_mime.value
+  };
+  const out = await api("/admin/api/menu-media", { method: "POST", body: JSON.stringify(payload) });
+  document.getElementById("menu-result").textContent = JSON.stringify(out, null, 2);
+}
+
+async function importFolder() {
+  const payload = {
+    folder_id: folder_id.value,
+    description: folder_desc.value,
+    price_cents: Number(folder_price.value)
+  };
+  const out = await api("/admin/api/import-drive-folder", { method: "POST", body: JSON.stringify(payload) });
+  document.getElementById("import-result").textContent = JSON.stringify(out, null, 2);
+  await loadProducts();
+  await loadStats();
+}
+
+async function boot() {
+  await Promise.all([loadStats(), loadPlans(), loadProducts(), loadOrders(), loadVips(), loadUsers()]);
+}
+boot();
+</script>
+</body>
+</html>
