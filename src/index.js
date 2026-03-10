@@ -13,6 +13,13 @@ const { AsyncQueue } = require("./queue");
 const fs = require("fs");
 const os = require("os");
 
+function replyCapturedFileId(ctx, label, fileId) {
+  if (!fileId) return null;
+  console.log(`${label}:`, fileId);
+  return ctx.reply(`✅ ${label} capturado:\n\n${fileId}`);
+}
+
+
 const app=express();
 app.use(express.json({limit:"10mb"}));
 
@@ -306,7 +313,46 @@ bot.action(/^REDELIVER_(\d+)$/, async ctx=>{await ctx.answerCbQuery();const prod
 bot.action(/^BUY_PRODUCT_(\d+)$/, async ctx=>{await ctx.answerCbQuery();const userId=getCtxUserId(ctx);if(!userId) return ctx.reply('⚠️ Não consegui identificar seu usuário.');const product=getProductById(Number(ctx.match[1]));if(!product) return ctx.reply('❌ Conteúdo não encontrado.');try{const token=await getLivePixToken({clientId:process.env.LIVEPIX_CLIENT_ID,clientSecret:process.env.LIVEPIX_CLIENT_SECRET});const payment=await createPayment({token,amountCents:product.price_cents,redirectUrl:'https://example.com/obrigado'});db.prepare("INSERT INTO orders (telegram_user_id,kind,product_id,amount_cents,reference,status) VALUES (?, 'product', ?, ?, ?, 'pending')").run(String(userId),product.id,product.price_cents,payment.reference);trackEvent(userId,'buy_click',product.id);addScore(userId,5);await ctx.reply(`💳 *Pagamento gerado!*\n\nConteúdo: *${product.title}*\nValor: R$ ${(product.price_cents/100).toFixed(2).replace('.',',')}\n\n👉 Pague por aqui:\n${payment.redirectUrl}\n\n✅ Após confirmar, eu vou pedir seu email para liberar o acesso.`,{parse_mode:'Markdown'});}catch(e){console.error(e);await ctx.reply('❌ Erro ao gerar pagamento.');}});
 bot.action('MENU_SUPORTE', async ctx=>{await ctx.answerCbQuery();await ctx.reply('🆘 *Suporte VIP*\n\nFale comigo no WhatsApp:',{parse_mode:'Markdown',...supportMenu(SUPPORT_WA)});});
 bot.action('MARKETING_STOP', async ctx=>{await ctx.answerCbQuery();db.prepare("UPDATE users SET marketing_opt_out=1 WHERE telegram_user_id=?").run(String(ctx.from.id));await ctx.reply('✅ Tudo certo. Não vou mais enviar mensagens automáticas.');});
-bot.on('photo', async ctx=>{const photo=ctx.message.photo[ctx.message.photo.length-1];console.log('COVER_FILE_ID:',photo.file_id);await ctx.reply('✅ File ID capturado no console.');});
+
+bot.on('video', async (ctx) => {
+  try {
+    const fileId = ctx?.message?.video?.file_id;
+    await replyCapturedFileId(ctx, 'VIDEO_FILE_ID', fileId);
+  } catch (e) {
+    console.log('video file_id capture error:', e.message);
+  }
+});
+
+bot.on('animation', async (ctx) => {
+  try {
+    const fileId = ctx?.message?.animation?.file_id;
+    await replyCapturedFileId(ctx, 'GIF_FILE_ID', fileId);
+  } catch (e) {
+    console.log('animation file_id capture error:', e.message);
+  }
+});
+
+bot.on('document', async (ctx) => {
+  try {
+    const doc = ctx?.message?.document;
+    if (!doc) return;
+    const mime = String(doc.mime_type || '').toLowerCase();
+
+    if (mime.startsWith('video/')) {
+      await replyCapturedFileId(ctx, 'VIDEO_FILE_ID', doc.file_id);
+      return;
+    }
+
+    if (mime === 'image/gif' || mime === 'application/gif') {
+      await replyCapturedFileId(ctx, 'GIF_FILE_ID', doc.file_id);
+      return;
+    }
+  } catch (e) {
+    console.log('document file_id capture error:', e.message);
+  }
+});
+
+bot.on('photo', async ctx=>{const photo=ctx.message.photo[ctx.message.photo.length-1];await replyCapturedFileId(ctx,'COVER_FILE_ID',photo.file_id);});
 
 app.post('/webhook/livepix', async (req,res)=>{try{if(process.env.WEBHOOK_SECRET&&req.query.secret!==process.env.WEBHOOK_SECRET)return res.status(401).json({ok:false});const payload=req.body;if(payload?.resource?.type!=='payment') return res.json({ok:true});const {id:paymentId,reference}=payload.resource;const order=getOrderByReference(reference);if(!order||order.status==='paid') return res.json({ok:true});markOrderPaid(reference,paymentId);if(order.kind==='vip'){const plan=getPlan(order.plan_code);if(!plan)return res.json({ok:true});setVipExpiry(order.telegram_user_id,Date.now()+Number(plan.days)*24*60*60*1000);trackEvent(order.telegram_user_id,'vip_paid');addScore(order.telegram_user_id,20);const invite=await createSingleUseInviteLink();await bot.telegram.sendMessage(order.telegram_user_id,`✅ Pagamento confirmado!\n\nVIP liberado por *${plan.days} dias*.\n\n⏳ Link (1 uso / expira em ${INVITE_TTL_MINUTES} min):\n${invite}`,{parse_mode:'Markdown'});return res.json({ok:true});}if(order.kind==='product'){const product=getProductById(Number(order.product_id));if(!product||!product.drive_file_id){await bot.telegram.sendMessage(order.telegram_user_id,'⚠️ Pagamento confirmado, mas este item está sem Drive ID cadastrado. Fale no suporte.');return res.json({ok:true});}const email=getUserEmail(order.telegram_user_id);const expires=Date.now()+30*24*60*60*1000;if(!email){db.prepare("INSERT INTO pending_grants (telegram_user_id,order_reference,product_id,drive_file_id,expires_at) VALUES (?,?,?,?,?) ON CONFLICT(order_reference) DO NOTHING").run(String(order.telegram_user_id),reference,Number(product.id),product.drive_file_id,expires);await bot.telegram.sendMessage(order.telegram_user_id,'✅ Pagamento confirmado!\n\n📧 Agora envie seu email do Google para liberar o conteúdo por 30 dias.\n\nExemplo:\n/email seuemail@exemplo.com');return res.json({ok:true});}const perm=await grantFileToEmail({driveFileId:product.drive_file_id,email});db.prepare("INSERT INTO drive_access (telegram_user_id,email,drive_file_id,permission_id,expires_at) VALUES (?,?,?,?,?)").run(String(order.telegram_user_id),email,product.drive_file_id,perm.permissionId,expires);const token=createContentToken({telegramUserId:order.telegram_user_id,productId:product.id,driveFileId:product.drive_file_id,expiresAtMs:expires});db.prepare("INSERT INTO purchases (telegram_user_id,product_id) VALUES (?,?)").run(String(order.telegram_user_id),product.id);trackEvent(order.telegram_user_id,'product_paid',product.id);addScore(order.telegram_user_id,15);await bot.telegram.sendMessage(order.telegram_user_id,`✅ Pagamento confirmado!\n\n📁 Conteúdo liberado para: *${email}*\n⏳ Validade: *30 dias*\n\n🔗 Link individual (1 uso):\n${process.env.PUBLIC_URL}/c/${token}`,{parse_mode:'Markdown'});return res.json({ok:true});}return res.json({ok:true});}catch(e){console.error('webhook error:',e);return res.status(500).json({ok:false});}});
 app.get('/c/:token',(req,res)=>{const row=db.prepare("SELECT * FROM content_links WHERE token=?").get(req.params.token);if(!row)return res.status(404).send('Link inválido.');if(row.used_count>=1)return res.status(410).send('Link já utilizado.');if(row.expires_at<=Date.now())return res.status(410).send('Acesso expirado.');const ok=db.transaction(()=>{const cur=db.prepare("SELECT used_count FROM content_links WHERE token=?").get(req.params.token);if(!cur||cur.used_count>=1)return false;db.prepare("UPDATE content_links SET used_count=1, used_at=? WHERE token=?").run(Date.now(),req.params.token);return true;})();if(!ok)return res.status(410).send('Link já utilizado.');return res.redirect(302,`https://drive.google.com/file/d/${row.drive_file_id}/view`);});

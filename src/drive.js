@@ -1,155 +1,129 @@
 const { google } = require("googleapis");
-const fs = require("fs");
-const path = require("path");
 
-const CACHE_DIR = path.resolve(process.cwd(), "drive-cache");
-const DOWNLOAD_CACHE_TTL_MS = Number(process.env.DOWNLOAD_CACHE_TTL_MS || 1000 * 60 * 30);
-const FILE_META_TTL_MS = Number(process.env.FILE_META_TTL_MS || 1000 * 60 * 10);
 
-if (!fs.existsSync(CACHE_DIR)) {
-  fs.mkdirSync(CACHE_DIR, { recursive: true });
+function normalizeDriveId(input) {
+  const raw = String(input || "").trim();
+  if (!raw) throw new Error("ID do Google Drive vazio");
+
+  const cleaned = raw
+    .replace(/^https?:\/\/drive\.google\.com\/drive\/folders\//i, "")
+    .replace(/^https?:\/\/drive\.google\.com\/file\/d\//i, "")
+    .replace(/^https?:\/\/drive\.google\.com\/open\?id=/i, "")
+    .replace(/^folders\//i, "")
+    .split(/[?#/]/)[0]
+    .trim();
+
+  if (!cleaned) throw new Error("ID do Google Drive inválido");
+  return cleaned;
 }
 
-const memoryMetaCache = new Map();
 
-function readServiceAccount() {
+function getCredentials() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON não configurado");
-  return JSON.parse(raw);
+  return typeof raw === "string" ? JSON.parse(raw) : raw;
 }
 
-let driveSingleton = null;
-
 function getDriveClient() {
-  if (driveSingleton) return driveSingleton;
-
-  const credentials = readServiceAccount();
   const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/drive"]
+    credentials: getCredentials(),
+    scopes: ["https://www.googleapis.com/auth/drive"],
   });
-
-  driveSingleton = google.drive({ version: "v3", auth });
-  return driveSingleton;
+  return google.drive({ version: "v3", auth });
 }
 
 function driveDirectUrl(fileId) {
-  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+  const safeId = normalizeDriveId(fileId);
+  return `https://drive.googleusercontent.com/uc?id=${safeId}&export=download`;
 }
 
-async function getFileMeta(fileId) {
-  const key = String(fileId);
-  const cached = memoryMetaCache.get(key);
-  const now = Date.now();
+function driveViewUrl(fileId) {
+  const safeId = normalizeDriveId(fileId);
+  return `https://drive.google.com/file/d/${safeId}/view`;
+}
 
-  if (cached && cached.expiresAt > now) {
-    return cached.data;
-  }
-
+async function getDriveFileMeta(fileId) {
   const drive = getDriveClient();
-  const { data } = await drive.files.get({
-    fileId: key,
-    fields: "id,name,mimeType,size,webViewLink"
+  const res = await drive.files.get({
+    fileId: normalizeDriveId(fileId),
+    fields: "id,name,mimeType,size",
+    supportsAllDrives: true,
   });
-
-  memoryMetaCache.set(key, {
-    data,
-    expiresAt: now + FILE_META_TTL_MS
-  });
-
-  return data;
-}
-
-function getCachedFilePath(fileId, filename = "") {
-  const safe = String(fileId).replace(/[^a-zA-Z0-9_-]/g, "_");
-  const ext = path.extname(filename || "");
-  return path.join(CACHE_DIR, `${safe}${ext || ".bin"}`);
-}
-
-function isFresh(filePath) {
-  try {
-    const stat = fs.statSync(filePath);
-    return (Date.now() - stat.mtimeMs) < DOWNLOAD_CACHE_TTL_MS;
-  } catch {
-    return false;
-  }
+  return res.data;
 }
 
 async function downloadDriveFileBuffer(fileId) {
-  const meta = await getFileMeta(fileId);
-  const filePath = getCachedFilePath(fileId, meta?.name || "");
-
-  if (isFresh(filePath)) {
-    return fs.readFileSync(filePath);
-  }
-
   const drive = getDriveClient();
   const res = await drive.files.get(
-    { fileId: String(fileId), alt: "media" },
+    {
+      fileId: normalizeDriveId(fileId),
+      alt: "media",
+      supportsAllDrives: true,
+    },
     { responseType: "arraybuffer" }
   );
-
-  const buffer = Buffer.from(res.data);
-  fs.writeFileSync(filePath, buffer);
-  return buffer;
+  return Buffer.from(res.data);
 }
 
-async function grantFileToEmail({ driveFileId, email, expiresAtMs = null }) {
+async function grantFileToEmail({ driveFileId, email, expirationTime }) {
   const drive = getDriveClient();
-  const requestBody = {
-    type: "user",
-    role: "reader",
-    emailAddress: String(email).trim()
-  };
-
-  if (expiresAtMs) {
-    requestBody.expirationTime = new Date(Number(expiresAtMs)).toISOString();
-  }
-
-  const { data } = await drive.permissions.create({
-    fileId: String(driveFileId),
-    requestBody,
-    fields: "id"
+  const res = await drive.permissions.create({
+    fileId: normalizeDriveId(driveFileId),
+    requestBody: {
+      type: "user",
+      role: "reader",
+      emailAddress: email,
+      expirationTime: expirationTime || undefined,
+    },
+    fields: "id",
+    supportsAllDrives: true,
   });
-
-  return { permissionId: data.id };
+  return { permissionId: res.data.id };
 }
 
 async function revokePermission({ driveFileId, permissionId }) {
   if (!permissionId) return;
   const drive = getDriveClient();
   await drive.permissions.delete({
-    fileId: String(driveFileId),
-    permissionId: String(permissionId)
+    fileId: normalizeDriveId(driveFileId),
+    permissionId,
+    supportsAllDrives: true,
   });
 }
 
 async function listFolderFiles({ folderId }) {
   const drive = getDriveClient();
-  let pageToken = undefined;
-  const all = [];
-
+  const files = [];
+  let pageToken;
   do {
-    const { data } = await drive.files.list({
-      q: `'${String(folderId)}' in parents and trashed = false`,
+    const res = await drive.files.list({
+      const safeFolderId = normalizeDriveId(folderId);
+      q: `'${safeFolderId}' in parents and trashed=false`,
       fields: "nextPageToken, files(id,name,mimeType,webViewLink,size)",
+      pageToken,
       pageSize: 1000,
-      pageToken
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
     });
-
-    all.push(...(data.files || []));
-    pageToken = data.nextPageToken || undefined;
+    files.push(...(res.data.files || []));
+    pageToken = res.data.nextPageToken;
   } while (pageToken);
-
-  return all;
+  return files;
 }
 
 module.exports = {
+  normalizeDriveId,
   getDriveClient,
-  getFileMeta,
-  downloadDriveFileBuffer,
   grantFileToEmail,
   revokePermission,
   listFolderFiles,
-  driveDirectUrl
+  driveDirectUrl,
+  driveViewUrl,
+  getDriveFileMeta,
+  downloadDriveFileBuffer,
+  grantFileAccess: async (email, fileId, expirationDate) =>
+    grantFileToEmail({ driveFileId: fileId, email, expirationTime: expirationDate }),
+  revokeFileAccess: async (fileId, permissionId) =>
+    revokePermission({ driveFileId: fileId, permissionId }),
+  makeDriveViewLink: driveViewUrl,
 };

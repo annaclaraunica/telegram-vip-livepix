@@ -1,0 +1,29 @@
+ARQUIVOS PRONTOS PARA SUBSTITUIR
+
+Incluídos:
+- src/index.js
+- src/drive.js
+
+Correções:
+1. Captura de file_id funcionando para:
+   - vídeo enviado normal
+   - GIF/animação
+   - vídeo enviado como documento
+   - GIF enviado como documento
+   - foto (COVER_FILE_ID)
+2. O bot responde no chat com o file_id capturado.
+3. O importador de pasta do Drive agora aceita:
+   - ID puro
+   - folders/ID
+   - link completo de pasta
+4. As funções do Drive também normalizam ID em outras rotas.
+
+Como usar:
+- Envie um vídeo para o bot e ele responderá com VIDEO_FILE_ID.
+- Envie um GIF para o bot e ele responderá com GIF_FILE_ID.
+- Cole esse código no admin no campo de preview.
+
+Como aplicar:
+1. Faça backup dos arquivos atuais.
+2. Substitua src/index.js e src/drive.js.
+3. Rode git add . && git commit -m "fix file_id capture and drive folder id" && git push
