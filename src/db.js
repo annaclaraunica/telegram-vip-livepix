@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS products (
   preview_drive_file_id TEXT,
   preview_mime TEXT DEFAULT 'video',
   is_active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -132,6 +133,12 @@ CREATE INDEX IF NOT EXISTS idx_content_links_exp ON content_links(expires_at);
 CREATE INDEX IF NOT EXISTS idx_user_events_user_event ON user_events(telegram_user_id, event, id DESC);
 CREATE INDEX IF NOT EXISTS idx_user_events_product_event_created ON user_events(product_id, event, created_at);
 `);
+
+const productColumns = db.prepare("PRAGMA table_info(products)").all();
+const hasSortOrder = productColumns.some((col) => col.name === "sort_order");
+if (!hasSortOrder) {
+  db.exec("ALTER TABLE products ADD COLUMN sort_order INTEGER DEFAULT 0");
+}
 
 const hasPlans = db.prepare("SELECT COUNT(*) AS total FROM config_plans").get().total;
 if (!hasPlans) {
