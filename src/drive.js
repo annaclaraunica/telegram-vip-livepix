@@ -1,6 +1,5 @@
 const { google } = require("googleapis");
 
-
 function normalizeDriveId(input) {
   const raw = String(input || "").trim();
   if (!raw) throw new Error("ID do Google Drive vazio");
@@ -16,7 +15,6 @@ function normalizeDriveId(input) {
   if (!cleaned) throw new Error("ID do Google Drive inválido");
   return cleaned;
 }
-
 
 function getCredentials() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
@@ -65,19 +63,28 @@ async function downloadDriveFileBuffer(fileId) {
   return Buffer.from(res.data);
 }
 
-async function grantFileToEmail({ driveFileId, email, expirationTime }) {
+async function grantFileToEmail({ driveFileId, email, expiresAtMs, expirationTime }) {
   const drive = getDriveClient();
+  const expiresIso = expirationTime || (expiresAtMs ? new Date(Number(expiresAtMs)).toISOString() : undefined);
+
+  const requestBody = {
+    type: "user",
+    role: "reader",
+    emailAddress: String(email).trim(),
+  };
+
+  if (expiresIso) {
+    requestBody.expirationTime = expiresIso;
+  }
+
   const res = await drive.permissions.create({
     fileId: normalizeDriveId(driveFileId),
-    requestBody: {
-      type: "user",
-      role: "reader",
-      emailAddress: email,
-      expirationTime: expirationTime || undefined,
-    },
+    requestBody,
     fields: "id",
     supportsAllDrives: true,
+    sendNotificationEmail: false,
   });
+
   return { permissionId: res.data.id };
 }
 
@@ -93,11 +100,12 @@ async function revokePermission({ driveFileId, permissionId }) {
 
 async function listFolderFiles({ folderId }) {
   const drive = getDriveClient();
+  const safeFolderId = normalizeDriveId(folderId);
   const files = [];
   let pageToken;
+
   do {
     const res = await drive.files.list({
-      const safeFolderId = normalizeDriveId(folderId);
       q: `'${safeFolderId}' in parents and trashed=false`,
       fields: "nextPageToken, files(id,name,mimeType,webViewLink,size)",
       pageToken,
@@ -105,9 +113,11 @@ async function listFolderFiles({ folderId }) {
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
     });
+
     files.push(...(res.data.files || []));
     pageToken = res.data.nextPageToken;
   } while (pageToken);
+
   return files;
 }
 
