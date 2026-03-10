@@ -13,40 +13,63 @@ const { AsyncQueue } = require("./queue");
 const fs = require("fs");
 const os = require("os");
 
+const pendingPreviewByUser = new Map();
+
 function replyCapturedFileId(ctx, label, fileId) {
   if (!fileId) return null;
   console.log(`${label}:`, fileId);
   return ctx.reply(`✅ ${label} capturado:\n\n${fileId}`);
 }
 
-
 function extractMediaInfoFromMessage(message) {
   if (!message) return null;
 
   if (message.video?.file_id) {
-    return { fileId: message.video.file_id, previewMime: "video", kind: "video" };
+    return { fileId: message.video.file_id, previewMime: "video" };
   }
 
   if (message.animation?.file_id) {
-    return { fileId: message.animation.file_id, previewMime: "gif", kind: "animation" };
+    return { fileId: message.animation.file_id, previewMime: "gif" };
   }
 
   if (message.document?.file_id) {
     const mime = String(message.document.mime_type || "").toLowerCase();
     if (mime.startsWith("video/")) {
-      return { fileId: message.document.file_id, previewMime: "video", kind: "document-video" };
+      return { fileId: message.document.file_id, previewMime: "video" };
     }
     if (mime === "image/gif" || mime === "application/gif") {
-      return { fileId: message.document.file_id, previewMime: "gif", kind: "document-gif" };
+      return { fileId: message.document.file_id, previewMime: "gif" };
     }
   }
 
   return null;
 }
 
+function setPendingPreview(userId, payload) {
+  pendingPreviewByUser.set(String(userId), {
+    ...payload,
+    createdAt: Date.now()
+  });
+}
+
+function getPendingPreview(userId) {
+  const key = String(userId);
+  const item = pendingPreviewByUser.get(key);
+  if (!item) return null;
+  if (Date.now() - Number(item.createdAt || 0) > 15 * 60 * 1000) {
+    pendingPreviewByUser.delete(key);
+    return null;
+  }
+  return item;
+}
+
+function clearPendingPreview(userId) {
+  pendingPreviewByUser.delete(String(userId));
+}
+
 async function savePreviewToProduct(ctx, productId, media) {
-  const exists = db.prepare("SELECT id,title FROM products WHERE id=? LIMIT 1").get(Number(productId));
-  if (!exists) {
+  const product = db.prepare("SELECT id,title FROM products WHERE id=? LIMIT 1").get(Number(productId));
+  if (!product) {
     await ctx.reply("❌ Produto não encontrado.");
     return;
   }
@@ -54,16 +77,15 @@ async function savePreviewToProduct(ctx, productId, media) {
   db.prepare("UPDATE products SET preview_drive_file_id=?, preview_mime=? WHERE id=?")
     .run(String(media.fileId), String(media.previewMime), Number(productId));
 
-  if (typeof invalidatePrefix === "function") {
-    try {
-      invalidatePrefix("products:");
-      invalidatePrefix("top:");
-      invalidatePrefix("menu:");
-      invalidatePrefix("metrics:");
-    } catch {}
-  }
+  try {
+    invalidatePrefix("products:");
+    invalidatePrefix("top:");
+    invalidatePrefix("metrics:");
+  } catch {}
 
-  await ctx.reply(`✅ Preview salvo no produto #${productId}\n\nTítulo: ${exists.title}\nTipo: ${media.previewMime}\nFILE_ID:\n${media.fileId}`);
+  await ctx.reply(
+    `✅ Preview salvo no produto #${product.id}\n\nTítulo: ${product.title}\nTipo: ${media.previewMime}\nFILE_ID:\n${media.fileId}`
+  );
 }
 
 async function savePreviewToMenu(ctx, menuKey, media) {
@@ -77,15 +99,14 @@ async function savePreviewToMenu(ctx, menuKey, media) {
   db.prepare("INSERT INTO menu_media (menu_key,preview_drive_file_id,preview_mime,caption) VALUES (?,?,?,?) ON CONFLICT(menu_key) DO UPDATE SET preview_drive_file_id=excluded.preview_drive_file_id, preview_mime=excluded.preview_mime, caption=COALESCE(menu_media.caption, excluded.caption)")
     .run(key, String(media.fileId), String(media.previewMime), row?.caption || null);
 
-  if (typeof invalidatePrefix === "function") {
-    try {
-      invalidatePrefix("menu:");
-    } catch {}
-  }
+  try {
+    invalidatePrefix("menu:");
+  } catch {}
 
-  await ctx.reply(`✅ Preview salvo no menu ${key}\nTipo: ${media.previewMime}\nFILE_ID:\n${media.fileId}`);
+  await ctx.reply(
+    `✅ Preview salvo no menu ${key}\n\nTipo: ${media.previewMime}\nFILE_ID:\n${media.fileId}`
+  );
 }
-
 
 const app=express();
 app.use(express.json({limit:"10mb"}));
@@ -353,33 +374,33 @@ async function revokeExpiredDriveAccessJob(){const rows=db.prepare("SELECT * FRO
 bot.start(async ctx=>{const isNew=touchUser(ctx.from.id);if(isNew&&process.env.COVER_FILE_ID){await ctx.replyWithPhoto(process.env.COVER_FILE_ID,{caption:'🔥 *Bem-vinda ao VIP da Anna*\n\nConteúdos exclusivos, previews e acesso rápido.\n\n👇 Escolha uma opção no menu.',parse_mode:'Markdown'});}await sendMenuWithMedia(ctx,'home','Menu principal',mainMenu(INSTAGRAM_URL,FREE_GROUP_URL));});
 
 bot.command('preview', async (ctx) => {
-  const parts = String(ctx.message?.text || "").trim().split(/\s+/);
-  const productId = Number(parts[1] || 0);
-
+  const productId = Number(String(ctx.message?.text || "").trim().split(/\s+/)[1] || 0);
   if (!productId) {
-    return ctx.reply("Use assim: /preview 123\n\nDepois responda essa mensagem com o vídeo ou GIF do preview.");
+    return ctx.reply("Use assim:\n/preview 12\n\ntroque 12 pelo ID do produto.");
   }
 
-  return ctx.reply(`Agora responda esta mensagem com o vídeo ou GIF do preview para salvar no produto #${productId}.`, {
-    reply_markup: {
-      force_reply: true
-    }
-  });
+  const exists = db.prepare("SELECT id,title FROM products WHERE id=? LIMIT 1").get(productId);
+  if (!exists) {
+    return ctx.reply("❌ Produto não encontrado.");
+  }
+
+  setPendingPreview(ctx.from.id, { type: "product", productId });
+  await ctx.reply(`Agora envie o vídeo ou GIF do preview para o produto #${productId}.\n\nTítulo: ${exists.title}\n\nVocê pode enviar normal ou como documento.`);
 });
 
 bot.command('menupreview', async (ctx) => {
-  const parts = String(ctx.message?.text || "").trim().split(/\s+/);
-  const menuKey = String(parts[1] || "").trim().toLowerCase();
-
-  if (!menuKey || !["home", "vip", "free"].includes(menuKey)) {
-    return ctx.reply("Use assim: /menupreview home\nOu: /menupreview vip\nOu: /menupreview free\n\nDepois responda essa mensagem com o vídeo ou GIF.");
+  const menuKey = String(String(ctx.message?.text || "").trim().split(/\s+/)[1] || "").toLowerCase();
+  if (!["home", "vip", "free"].includes(menuKey)) {
+    return ctx.reply("Use assim:\n/menupreview home\nou\n/menupreview vip\nou\n/menupreview free");
   }
 
-  return ctx.reply(`Agora responda esta mensagem com o vídeo ou GIF para salvar no menu ${menuKey}.`, {
-    reply_markup: {
-      force_reply: true
-    }
-  });
+  setPendingPreview(ctx.from.id, { type: "menu", menuKey });
+  await ctx.reply(`Agora envie o vídeo ou GIF para salvar no menu ${menuKey}.\n\nVocê pode enviar normal ou como documento.`);
+});
+
+bot.command('cancelpreview', async (ctx) => {
+  clearPendingPreview(ctx.from.id);
+  await ctx.reply("✅ Operação de preview cancelada.");
 });
 
 bot.command('email', async ctx=>{const parts=(ctx.message.text||'').trim().split(/\s+/);if(parts.length<2) return ctx.reply('📧 Envie assim: /email seuemail@exemplo.com');const email=parts[1].trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ctx.reply('❌ Email inválido.');const userId=getCtxUserId(ctx);if(!userId) return ctx.reply('⚠️ Não consegui identificar seu usuário.');setUserEmail(userId,email);trackEvent(userId,'email_set');await ctx.reply(`✅ Email cadastrado: ${email}`);await processPendingGrantsForUser(ctx,email);});
@@ -412,10 +433,38 @@ bot.action(/^BUY_PRODUCT_(\d+)$/, async ctx=>{await ctx.answerCbQuery();const us
 bot.action('MENU_SUPORTE', async ctx=>{await ctx.answerCbQuery();await ctx.reply('🆘 *Suporte VIP*\n\nFale comigo no WhatsApp:',{parse_mode:'Markdown',...supportMenu(SUPPORT_WA)});});
 bot.action('MARKETING_STOP', async ctx=>{await ctx.answerCbQuery();db.prepare("UPDATE users SET marketing_opt_out=1 WHERE telegram_user_id=?").run(String(ctx.from.id));await ctx.reply('✅ Tudo certo. Não vou mais enviar mensagens automáticas.');});
 
+bot.use(async (ctx, next) => {
+  try {
+    const userId = ctx?.from?.id || ctx?.message?.from?.id || ctx?.callbackQuery?.from?.id;
+    const media = extractMediaInfoFromMessage(ctx?.message);
+    const pending = userId ? getPendingPreview(userId) : null;
+
+    if (media && pending) {
+      if (pending.type === "product") {
+        await savePreviewToProduct(ctx, pending.productId, media);
+        clearPendingPreview(userId);
+        return;
+      }
+
+      if (pending.type === "menu") {
+        await savePreviewToMenu(ctx, pending.menuKey, media);
+        clearPendingPreview(userId);
+        return;
+      }
+    }
+
+    return next();
+  } catch (e) {
+    console.log("preview middleware error:", e.message);
+    try {
+      await ctx.reply("⚠️ Não consegui salvar esse preview.");
+    } catch {}
+  }
+});
+
 bot.on('video', async (ctx) => {
   try {
-    const fileId = ctx?.message?.video?.file_id;
-    await replyCapturedFileId(ctx, 'VIDEO_FILE_ID', fileId);
+    await replyCapturedFileId(ctx, 'VIDEO_FILE_ID', ctx?.message?.video?.file_id);
   } catch (e) {
     console.log('video file_id capture error:', e.message);
   }
@@ -423,8 +472,7 @@ bot.on('video', async (ctx) => {
 
 bot.on('animation', async (ctx) => {
   try {
-    const fileId = ctx?.message?.animation?.file_id;
-    await replyCapturedFileId(ctx, 'GIF_FILE_ID', fileId);
+    await replyCapturedFileId(ctx, 'GIF_FILE_ID', ctx?.message?.animation?.file_id);
   } catch (e) {
     console.log('animation file_id capture error:', e.message);
   }
@@ -432,51 +480,13 @@ bot.on('animation', async (ctx) => {
 
 bot.on('document', async (ctx) => {
   try {
-    const doc = ctx?.message?.document;
-    if (!doc) return;
-    const mime = String(doc.mime_type || '').toLowerCase();
-
-    if (mime.startsWith('video/')) {
-      await replyCapturedFileId(ctx, 'VIDEO_FILE_ID', doc.file_id);
-      return;
-    }
-
-    if (mime === 'image/gif' || mime === 'application/gif') {
-      await replyCapturedFileId(ctx, 'GIF_FILE_ID', doc.file_id);
-      return;
-    }
+    const media = extractMediaInfoFromMessage(ctx?.message);
+    if (!media) return;
+    const label = media.previewMime === 'gif' ? 'GIF_FILE_ID' : 'VIDEO_FILE_ID';
+    await replyCapturedFileId(ctx, label, media.fileId);
   } catch (e) {
     console.log('document file_id capture error:', e.message);
   }
-});
-
-
-bot.on(['video', 'animation', 'document'], async (ctx, next) => {
-  try {
-    const mediaReply = extractMediaInfoFromMessage(ctx.message);
-    const repliedText = String(ctx.message?.reply_to_message?.text || "");
-
-    if (mediaReply && repliedText) {
-      const productMatch = repliedText.match(/produto #(\d+)/i);
-      const menuMatch = repliedText.match(/menu (home|vip|free)/i);
-
-      if (productMatch) {
-        await savePreviewToProduct(ctx, Number(productMatch[1]), mediaReply);
-        return;
-      }
-
-      if (menuMatch) {
-        await savePreviewToMenu(ctx, String(menuMatch[1]).toLowerCase(), mediaReply);
-        return;
-      }
-    }
-  } catch (e) {
-    console.log('auto preview save error:', e.message);
-    await ctx.reply('⚠️ Não consegui salvar esse preview automaticamente.');
-    return;
-  }
-
-  return next();
 });
 
 bot.on('photo', async ctx=>{const photo=ctx.message.photo[ctx.message.photo.length-1];await replyCapturedFileId(ctx,'COVER_FILE_ID',photo.file_id);});
