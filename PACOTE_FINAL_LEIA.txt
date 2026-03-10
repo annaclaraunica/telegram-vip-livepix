@@ -1,0 +1,24 @@
+PACOTE FINAL DO BOT
+
+Arquivos incluídos:
+- src/index.js
+- src/menus.js
+- admin/index.html
+
+Como aplicar:
+1. Faça backup dos arquivos atuais.
+2. Extraia este zip na raiz do projeto.
+3. Substitua os arquivos quando o Windows perguntar.
+4. Rode:
+   git add .
+   git commit -m "pacote final index menus admin"
+   git push
+
+Depois no Render:
+- aguarde o deploy automático
+ou
+- Manual Deploy > Deploy latest commit
+
+Observação:
+- Este pacote usa as rotas admin já existentes no seu backend.
+- Para previews mais rápidos, prefira salvar file_id do Telegram no campo de preview.
