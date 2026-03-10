@@ -3,310 +3,660 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Professional Fix</title>
+  <title>Admin Anna Bot</title>
   <style>
-    :root{--bg:#0c0f14;--panel:#151a23;--line:#263043;--text:#eff3f8;--muted:#96a0b2;--acc:#8a5cff;--ok:#22c55e;--warn:#ffb020}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
-    header{padding:22px 26px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(12,15,20,.94);backdrop-filter:blur(8px)}
-    main{padding:24px;display:grid;gap:20px}
-    .grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
-    .stats{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px}
-    .muted{color:var(--muted)} .kpi{font-size:30px;font-weight:700;margin-top:8px}
-    input,textarea,select,button{width:100%;padding:11px 12px;margin-top:8px;border-radius:12px;border:1px solid var(--line);background:#0f141c;color:var(--text)}
-    button{background:var(--acc);border:none;font-weight:700;cursor:pointer}
-    button.secondary{background:#1d2431}
-    table{width:100%;border-collapse:collapse;font-size:14px}
-    th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-    .wrap{overflow:auto;max-height:520px}
-    .inline{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    pre{white-space:pre-wrap;background:#0f141c;padding:12px;border-radius:12px;border:1px solid var(--line)}
-    .ok{color:var(--ok)} .warn{color:var(--warn)}
-    .row-actions{display:flex;gap:8px}
+    :root{
+      --bg:#0f1115;
+      --card:#171a21;
+      --muted:#9ca3af;
+      --line:#2a2f3a;
+      --text:#f3f4f6;
+      --accent:#ff4da6;
+      --accent2:#7c3aed;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,Helvetica,sans-serif;
+      background:linear-gradient(180deg,#0d0f14,#111827);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:24px;
+    }
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:20px;
+      flex-wrap:wrap;
+    }
+    .title h1{
+      margin:0 0 6px;
+      font-size:28px;
+    }
+    .title p{
+      margin:0;
+      color:var(--muted);
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    button{
+      border:0;
+      border-radius:12px;
+      padding:12px 16px;
+      cursor:pointer;
+      font-weight:700;
+      color:white;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+    }
+    button.secondary{
+      background:#232936;
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+    button.danger{
+      background:linear-gradient(135deg,#dc2626,#b91c1c);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12,1fr);
+      gap:16px;
+    }
+    .card{
+      grid-column:span 12;
+      background:rgba(23,26,33,.98);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h2{
+      margin:0 0 14px;
+      font-size:20px;
+    }
+    .card p.small{
+      color:var(--muted);
+      margin-top:-6px;
+      margin-bottom:16px;
+      font-size:14px;
+    }
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+    }
+    .stat{
+      background:#10141d;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:14px;
+    }
+    .stat .label{
+      color:var(--muted);
+      font-size:13px;
+      margin-bottom:8px;
+    }
+    .stat .value{
+      font-size:24px;
+      font-weight:700;
+    }
+    .two-col{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+    }
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .form-grid .full{
+      grid-column:1 / -1;
+    }
+    label{
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+    input, select, textarea{
+      width:100%;
+      background:#0f131b;
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px;
+      outline:none;
+    }
+    textarea{min-height:110px; resize:vertical}
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+    .toolbar input{
+      max-width:260px;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+    th, td{
+      border-bottom:1px solid var(--line);
+      padding:10px 8px;
+      text-align:left;
+      vertical-align:top;
+    }
+    th{
+      color:var(--muted);
+      font-weight:700;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .tag{
+      display:inline-block;
+      border-radius:999px;
+      padding:4px 10px;
+      font-size:12px;
+      font-weight:700;
+      border:1px solid var(--line);
+      background:#111827;
+    }
+    .tag.ok{color:#86efac;border-color:#166534;background:#052e16}
+    .tag.warn{color:#fde68a;border-color:#92400e;background:#451a03}
+    .tag.danger{color:#fca5a5;border-color:#7f1d1d;background:#450a0a}
+    .mono{
+      font-family:Consolas,Monaco,monospace;
+      word-break:break-all;
+    }
+    .status{
+      margin-top:10px;
+      padding:12px;
+      border-radius:12px;
+      background:#10141d;
+      border:1px solid var(--line);
+      color:var(--muted);
+      white-space:pre-wrap;
+    }
+    .mini-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    @media (max-width: 900px){
+      .stats{grid-template-columns:1fr 1fr}
+      .two-col, .form-grid{grid-template-columns:1fr}
+    }
+    @media (max-width: 640px){
+      .stats{grid-template-columns:1fr}
+      .wrap{padding:14px}
+    }
   </style>
 </head>
 <body>
-<header>
-  <h1>Admin corrigido</h1>
-  <div class="muted">Inclui edição de preview e aviso visual para produtos sem preview</div>
-</header>
-
-<main>
-  <section class="stats">
-    <div class="card"><div class="muted">Total</div><div class="kpi" id="k-total">R$ 0,00</div></div>
-    <div class="card"><div class="muted">VIP</div><div class="kpi" id="k-vip">R$ 0,00</div></div>
-    <div class="card"><div class="muted">Conteúdo</div><div class="kpi" id="k-product">R$ 0,00</div></div>
-    <div class="card"><div class="muted">Usuários</div><div class="kpi" id="k-users">0</div></div>
-    <div class="card"><div class="muted">Produtos ativos</div><div class="kpi" id="k-active-products">0</div></div>
-  </section>
-
-  <section class="grid">
-    <div class="card">
-      <h2>Novo produto</h2>
-      <input id="title" placeholder="Título" />
-      <input id="tagline" placeholder="Tagline curta (opcional)" />
-      <textarea id="description" rows="4" placeholder="Descrição"></textarea>
-      <div class="inline">
-        <input id="price" placeholder="Preço em centavos" />
-        <input id="sort_order" placeholder="Prioridade (0, 10, 20...)" />
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>Anna Bot Admin</h1>
+        <p>Painel rápido para produtos, previews, importação do Drive e indicadores.</p>
       </div>
-      <input id="drive_file_id" placeholder="Drive file ID do conteúdo" />
-      <div class="inline">
-        <input id="preview_drive_file_id" placeholder="Drive file ID do preview" />
-        <select id="preview_mime">
-          <option value="video">video</option>
-          <option value="gif">gif</option>
-        </select>
+      <div class="actions">
+        <button class="secondary" onclick="reloadAll()">Atualizar tudo</button>
       </div>
-      <button onclick="saveProduct()">Salvar produto</button>
-      <pre id="save-product-result"></pre>
     </div>
 
     <div class="card">
-      <h2>Importar pasta do Drive</h2>
-      <input id="folder_id" placeholder="Folder ID" />
-      <textarea id="folder_desc" rows="4" placeholder="Descrição padrão dos itens importados"></textarea>
-      <input id="folder_price" placeholder="Preço em centavos" />
-      <div class="muted">Padrões aceitos: preview, prévia, previa, thumb, capa</div>
-      <button onclick="importFolder()">Importar pasta</button>
-      <pre id="import-result"></pre>
-    </div>
-
-    <div class="card">
-      <h2>Mídia do menu</h2>
-      <select id="menu_key">
-        <option value="home">home</option>
-        <option value="vip">vip</option>
-        <option value="free">free</option>
-      </select>
-      <textarea id="menu_caption" rows="3" placeholder="Legenda do menu"></textarea>
-      <div class="inline">
-        <input id="menu_preview_id" placeholder="Drive file ID do preview" />
-        <select id="menu_preview_mime">
-          <option value="video">video</option>
-          <option value="gif">gif</option>
-        </select>
+      <h2>Visão geral</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Faturamento total</div>
+          <div class="value" id="statTotal">R$ 0,00</div>
+        </div>
+        <div class="stat">
+          <div class="label">VIP</div>
+          <div class="value" id="statVip">R$ 0,00</div>
+        </div>
+        <div class="stat">
+          <div class="label">Conteúdo avulso</div>
+          <div class="value" id="statProduct">R$ 0,00</div>
+        </div>
+        <div class="stat">
+          <div class="label">Produtos ativos</div>
+          <div class="value" id="statProducts">0</div>
+        </div>
       </div>
-      <button onclick="saveMenuMedia()">Salvar mídia do menu</button>
-      <pre id="menu-result"></pre>
     </div>
 
-    <div class="card">
-      <h2>Planos VIP</h2>
-      <div class="wrap"><table id="plans-table"></table></div>
-      <button onclick="savePlans()">Salvar planos</button>
-      <pre id="plans-result"></pre>
-    </div>
-  </section>
-
-  <section class="grid">
-    <div class="card"><h2>Produtos</h2><div class="wrap"><table id="products-table"></table></div></div>
-    <div class="card"><h2>Pedidos</h2><div class="wrap"><table id="orders-table"></table></div></div>
-    <div class="card"><h2>VIPs</h2><div class="wrap"><table id="vips-table"></table></div></div>
-    <div class="card"><h2>Usuários</h2><div class="wrap"><table id="users-table"></table></div></div>
-  </section>
-</main>
-
-<script>
-const money = (c=0) => `R$ ${(Number(c||0)/100).toFixed(2).replace(".", ",")}`;
-async function api(url, options={}) {
-  const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...options });
-  const text = await res.text();
-  try { return JSON.parse(text) } catch { return text }
-}
-let plansCache = [];
-let productsCache = [];
-
-async function loadStats() {
-  const d = await api("/admin/api/stats");
-  document.getElementById("k-total").textContent = money(d.total);
-  document.getElementById("k-vip").textContent = money(d.vip);
-  document.getElementById("k-product").textContent = money(d.product);
-  document.getElementById("k-users").textContent = String(d.users || 0);
-  document.getElementById("k-active-products").textContent = String(d.activeProducts || 0);
-}
-
-async function loadPlans() {
-  const rows = await api("/admin/api/plans");
-  plansCache = rows;
-  document.getElementById("plans-table").innerHTML = `
-    <tr><th>Código</th><th>Label</th><th>Dias</th><th>Preço</th><th>Ativo</th></tr>
-    ${rows.map((r,i)=>`
-      <tr>
-        <td>${r.code}</td>
-        <td><input data-i="${i}" data-k="label" value="${r.label}"></td>
-        <td><input data-i="${i}" data-k="days" value="${r.days}"></td>
-        <td><input data-i="${i}" data-k="amount_cents" value="${r.amount_cents}"></td>
-        <td><select data-i="${i}" data-k="active"><option value="1" ${Number(r.active)!==0?"selected":""}>1</option><option value="0" ${Number(r.active)===0?"selected":""}>0</option></select></td>
-      </tr>
-    `).join("")}
-  `;
-}
-
-async function savePlans() {
-  document.querySelectorAll("#plans-table input, #plans-table select").forEach(el=>{
-    plansCache[Number(el.dataset.i)][el.dataset.k] = el.value;
-  });
-  const out = await api("/admin/api/plans", { method:"POST", body: JSON.stringify({ plans: plansCache }) });
-  document.getElementById("plans-result").textContent = JSON.stringify(out, null, 2);
-}
-
-async function loadProducts() {
-  const rows = await api("/admin/api/products");
-  productsCache = rows;
-  document.getElementById("products-table").innerHTML = `
-    <tr><th>ID</th><th>Título</th><th>Preview</th><th>Status</th><th>Ações</th></tr>
-    ${rows.map((r,i)=>`
-      <tr>
-        <td>${r.id}</td>
-        <td>
-          <input data-i="${i}" data-k="title" value="${escapeHtml(r.title || "")}">
-          <input data-i="${i}" data-k="tagline" value="${escapeHtml(r.tagline || "")}" placeholder="tagline">
-          <textarea data-i="${i}" data-k="description" rows="3">${escapeHtml(r.description || "")}</textarea>
-          <div class="inline">
-            <input data-i="${i}" data-k="price_cents" value="${r.price_cents || 0}">
-            <input data-i="${i}" data-k="sort_order" value="${r.sort_order || 0}">
+    <div class="grid">
+      <div class="card">
+        <h2>Novo produto</h2>
+        <p class="small">Cadastre título, preço, Drive ID do conteúdo e preview. Para máxima velocidade, use <strong>file_id do Telegram</strong> no preview quando puder.</p>
+        <div class="form-grid">
+          <div class="full">
+            <label>Título</label>
+            <input id="title" placeholder="Ex: Vídeo completo Anna noite especial" />
           </div>
-          <input data-i="${i}" data-k="drive_file_id" value="${escapeHtml(r.drive_file_id || "")}" placeholder="conteúdo">
-        </td>
-        <td>
-          <div class="${r.preview_drive_file_id ? "ok" : "warn"}">${r.preview_drive_file_id ? "com preview" : "sem preview"}</div>
-          <input data-i="${i}" data-k="preview_drive_file_id" value="${escapeHtml(r.preview_drive_file_id || "")}" placeholder="preview">
-          <select data-i="${i}" data-k="preview_mime">
-            <option value="video" ${r.preview_mime==="video"?"selected":""}>video</option>
-            <option value="gif" ${r.preview_mime==="gif"?"selected":""}>gif</option>
-          </select>
-        </td>
-        <td>
-          <select data-i="${i}" data-k="is_active">
-            <option value="1" ${Number(r.is_active)!==0?"selected":""}>ativo</option>
-            <option value="0" ${Number(r.is_active)===0?"selected":""}>inativo</option>
-          </select>
-        </td>
-        <td>
-          <div class="row-actions">
-            <button class="secondary" onclick="saveProductRow(${i})">Salvar</button>
+          <div class="full">
+            <label>Descrição</label>
+            <textarea id="description" placeholder="Texto que aparecerá no preview do bot"></textarea>
           </div>
-        </td>
-      </tr>
-    `).join("")}
-  `;
-}
+          <div>
+            <label>Preço em centavos</label>
+            <input id="price_cents" type="number" placeholder="1990" />
+          </div>
+          <div>
+            <label>Drive ID do conteúdo completo</label>
+            <input id="drive_file_id" placeholder="1AbC..." />
+          </div>
+          <div>
+            <label>Preview (file_id Telegram ou Drive ID)</label>
+            <input id="preview_drive_file_id" placeholder="BAACAg... ou 1AbC..." />
+          </div>
+          <div>
+            <label>Tipo do preview</label>
+            <select id="preview_mime">
+              <option value="video">Vídeo</option>
+              <option value="gif">GIF</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:16px">
+          <button onclick="saveProduct()">Salvar produto</button>
+          <button class="secondary" onclick="clearProductForm()">Limpar</button>
+        </div>
+        <div class="status" id="saveStatus">Aguardando ação…</div>
+      </div>
 
-function escapeHtml(s) {
-  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
-}
+      <div class="card">
+        <h2>Importar uma pasta do Google Drive</h2>
+        <p class="small">Importa todos os arquivos da pasta e já cria produtos no banco.</p>
+        <div class="form-grid">
+          <div class="full">
+            <label>Folder ID</label>
+            <input id="folder_id" placeholder="1AbC..." />
+          </div>
+          <div class="full">
+            <label>Descrição padrão</label>
+            <textarea id="folder_description" placeholder="Conteúdo exclusivo."></textarea>
+          </div>
+          <div>
+            <label>Preço padrão em centavos</label>
+            <input id="folder_price" type="number" placeholder="1990" />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:16px">
+          <button onclick="importFolder()">Importar pasta</button>
+        </div>
+        <div class="status" id="importStatus">Aguardando ação…</div>
+      </div>
 
-async function saveProductRow(i) {
-  document.querySelectorAll(`#products-table [data-i="${i}"]`).forEach(el=>{
-    productsCache[i][el.dataset.k] = el.value;
-  });
-  const p = productsCache[i];
-  await api(`/admin/api/products/${p.id}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      title: p.title,
-      tagline: p.tagline,
-      description: p.description,
-      price_cents: Number(p.price_cents),
-      sort_order: Number(p.sort_order || 0),
-      drive_file_id: p.drive_file_id,
-      preview_drive_file_id: p.preview_drive_file_id,
-      preview_mime: p.preview_mime || "video",
-      is_active: Number(p.is_active ?? 1)
-    })
-  });
-  await loadProducts();
-}
+      <div class="card">
+        <h2>Menu com mídia</h2>
+        <p class="small">Define a mídia do menu principal, VIP ou FREE.</p>
+        <div class="form-grid">
+          <div>
+            <label>Menu</label>
+            <select id="menu_key">
+              <option value="home">Home</option>
+              <option value="vip">VIP</option>
+              <option value="free">FREE</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select id="menu_preview_mime">
+              <option value="video">Vídeo</option>
+              <option value="gif">GIF</option>
+            </select>
+          </div>
+          <div class="full">
+            <label>Preview (file_id Telegram ou Drive ID)</label>
+            <input id="menu_preview_drive_file_id" placeholder="BAACAg... ou 1AbC..." />
+          </div>
+          <div class="full">
+            <label>Legenda</label>
+            <textarea id="menu_caption" placeholder="Texto do menu"></textarea>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:16px">
+          <button onclick="saveMenuMedia()">Salvar mídia do menu</button>
+        </div>
+        <div class="status" id="menuStatus">Aguardando ação…</div>
+      </div>
 
-async function loadOrders() {
-  const rows = await api("/admin/api/orders");
-  document.getElementById("orders-table").innerHTML = `
-    <tr><th>ID</th><th>Tipo</th><th>Ref</th><th>Valor</th><th>Status</th></tr>
-    ${rows.map(r=>`
-      <tr>
-        <td>${r.id}</td>
-        <td>${r.kind}</td>
-        <td>${r.reference || ""}</td>
-        <td>${money(r.amount_cents)}</td>
-        <td>${r.status}</td>
-      </tr>
-    `).join("")}
-  `;
-}
+      <div class="card">
+        <h2>Produtos cadastrados</h2>
+        <div class="toolbar">
+          <input id="searchProducts" placeholder="Buscar por título..." oninput="renderProducts()" />
+          <button class="secondary" onclick="loadProducts()">Recarregar lista</button>
+        </div>
+        <div style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Título</th>
+                <th>Preço</th>
+                <th>Conteúdo</th>
+                <th>Preview</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable"></tbody>
+          </table>
+        </div>
+      </div>
 
-async function loadVips() {
-  const rows = await api("/admin/api/vips");
-  document.getElementById("vips-table").innerHTML = `
-    <tr><th>Usuário</th><th>Expira</th></tr>
-    ${rows.map(r=>`
-      <tr>
-        <td>${r.telegram_user_id}</td>
-        <td>${new Date(Number(r.expires_at)).toLocaleString("pt-BR")}</td>
-      </tr>
-    `).join("")}
-  `;
-}
+      <div class="card">
+        <h2>Pedidos recentes</h2>
+        <div class="toolbar">
+          <button class="secondary" onclick="loadOrders()">Atualizar pedidos</button>
+        </div>
+        <div style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuário</th>
+                <th>Tipo</th>
+                <th>Ref</th>
+                <th>Valor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTable"></tbody>
+          </table>
+        </div>
+      </div>
 
-async function loadUsers() {
-  const rows = await api("/admin/api/users");
-  document.getElementById("users-table").innerHTML = `
-    <tr><th>Usuário</th><th>Score</th><th>Último acesso</th><th>Opt-out</th></tr>
-    ${rows.map(r=>`
-      <tr>
-        <td>${r.telegram_user_id}</td>
-        <td>${r.score || 0}</td>
-        <td>${new Date(Number(r.last_seen_at||0)).toLocaleString("pt-BR")}</td>
-        <td>${Number(r.marketing_opt_out||0)}</td>
-      </tr>
-    `).join("")}
-  `;
-}
+      <div class="card">
+        <h2>VIPs ativos</h2>
+        <div class="toolbar">
+          <button class="secondary" onclick="loadVips()">Atualizar VIPs</button>
+        </div>
+        <div style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Expira em</th>
+              </tr>
+            </thead>
+            <tbody id="vipsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
-async function saveProduct() {
-  const payload = {
-    title: title.value,
-    tagline: tagline.value,
-    description: description.value,
-    price_cents: Number(price.value),
-    sort_order: Number(sort_order.value || 0),
-    drive_file_id: drive_file_id.value,
-    preview_drive_file_id: preview_drive_file_id.value,
-    preview_mime: preview_mime.value
-  };
-  const out = await api("/admin/api/products", { method: "POST", body: JSON.stringify(payload) });
-  document.getElementById("save-product-result").textContent = JSON.stringify(out, null, 2);
-  await loadProducts();
-  await loadStats();
-}
+  <script>
+    let PRODUCTS = [];
 
-async function saveMenuMedia() {
-  const payload = {
-    menu_key: menu_key.value,
-    caption: menu_caption.value,
-    preview_drive_file_id: menu_preview_id.value,
-    preview_mime: menu_preview_mime.value
-  };
-  const out = await api("/admin/api/menu-media", { method: "POST", body: JSON.stringify(payload) });
-  document.getElementById("menu-result").textContent = JSON.stringify(out, null, 2);
-}
+    async function api(url, options = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
 
-async function importFolder() {
-  const payload = {
-    folder_id: folder_id.value,
-    description: folder_desc.value,
-    price_cents: Number(folder_price.value)
-  };
-  const out = await api("/admin/api/import-drive-folder", { method: "POST", body: JSON.stringify(payload) });
-  document.getElementById("import-result").textContent = JSON.stringify(out, null, 2);
-  await loadProducts();
-  await loadStats();
-}
+      const text = await res.text();
+      let data;
+      try { data = text ? JSON.parse(text) : {}; }
+      catch { data = { raw: text }; }
 
-async function boot() {
-  await Promise.all([loadStats(), loadPlans(), loadProducts(), loadOrders(), loadVips(), loadUsers()]);
-}
-boot();
-</script>
+      if (!res.ok) {
+        throw new Error(data?.error || data?.raw || `Erro ${res.status}`);
+      }
+
+      return data;
+    }
+
+    function brl(cents) {
+      return `R$ ${(Number(cents || 0) / 100).toFixed(2).replace('.', ',')}`;
+    }
+
+    function tagStatus(status) {
+      const s = String(status || '').toLowerCase();
+      let cls = 'warn';
+      if (s === 'paid') cls = 'ok';
+      if (s === 'pending') cls = 'warn';
+      if (s === 'cancelled' || s === 'error') cls = 'danger';
+      return `<span class="tag ${cls}">${status || '-'}</span>`;
+    }
+
+    function setStatus(id, message) {
+      document.getElementById(id).textContent = message;
+    }
+
+    function clearProductForm() {
+      ['title','description','price_cents','drive_file_id','preview_drive_file_id'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('preview_mime').value = 'video';
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await api('/admin/api/stats');
+        document.getElementById('statTotal').textContent = brl(stats.total);
+        document.getElementById('statVip').textContent = brl(stats.vip);
+        document.getElementById('statProduct').textContent = brl(stats.product);
+      } catch (e) {
+        console.error(e);
+      }
+
+      try {
+        const products = await api('/admin/api/products');
+        document.getElementById('statProducts').textContent = String(products.length || 0);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function saveProduct() {
+      try {
+        setStatus('saveStatus', 'Salvando produto...');
+        const payload = {
+          title: document.getElementById('title').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          price_cents: Number(document.getElementById('price_cents').value || 0),
+          drive_file_id: document.getElementById('drive_file_id').value.trim(),
+          preview_drive_file_id: document.getElementById('preview_drive_file_id').value.trim(),
+          preview_mime: document.getElementById('preview_mime').value
+        };
+        await api('/admin/api/products', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        setStatus('saveStatus', 'Produto salvo com sucesso.');
+        clearProductForm();
+        await loadProducts();
+        await loadStats();
+      } catch (e) {
+        setStatus('saveStatus', `Erro ao salvar:\n${e.message}`);
+      }
+    }
+
+    async function importFolder() {
+      try {
+        setStatus('importStatus', 'Importando pasta do Drive...');
+        const payload = {
+          folder_id: document.getElementById('folder_id').value.trim(),
+          description: document.getElementById('folder_description').value.trim(),
+          price_cents: Number(document.getElementById('folder_price').value || 0)
+        };
+        const data = await api('/admin/api/import-drive-folder', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        setStatus('importStatus', `Importação concluída.\nCriados: ${data.created ?? 0}`);
+        await loadProducts();
+        await loadStats();
+      } catch (e) {
+        setStatus('importStatus', `Erro na importação:\n${e.message}`);
+      }
+    }
+
+    async function saveMenuMedia() {
+      try {
+        setStatus('menuStatus', 'Salvando mídia do menu...');
+        const payload = {
+          menu_key: document.getElementById('menu_key').value,
+          caption: document.getElementById('menu_caption').value.trim(),
+          preview_drive_file_id: document.getElementById('menu_preview_drive_file_id').value.trim(),
+          preview_mime: document.getElementById('menu_preview_mime').value
+        };
+        await api('/admin/api/menu-media', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        setStatus('menuStatus', 'Mídia do menu salva com sucesso.');
+      } catch (e) {
+        setStatus('menuStatus', `Erro ao salvar mídia:\n${e.message}`);
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        PRODUCTS = await api('/admin/api/products');
+        renderProducts();
+      } catch (e) {
+        document.getElementById('productsTable').innerHTML =
+          `<tr><td colspan="6">Erro ao carregar produtos: ${e.message}</td></tr>`;
+      }
+    }
+
+    function renderProducts() {
+      const q = (document.getElementById('searchProducts').value || '').trim().toLowerCase();
+      const rows = PRODUCTS.filter(p => !q || String(p.title || '').toLowerCase().includes(q));
+
+      if (!rows.length) {
+        document.getElementById('productsTable').innerHTML =
+          `<tr><td colspan="6">Nenhum produto encontrado.</td></tr>`;
+        return;
+      }
+
+      document.getElementById('productsTable').innerHTML = rows.map(p => `
+        <tr>
+          <td>${p.id}</td>
+          <td>
+            <strong>${escapeHtml(p.title || '')}</strong><br>
+            <span style="color:#9ca3af">${escapeHtml((p.description || '').slice(0, 120))}</span>
+          </td>
+          <td>${brl(p.price_cents)}</td>
+          <td class="mono">${escapeHtml(p.drive_file_id || '-')}</td>
+          <td class="mono">${escapeHtml(p.preview_drive_file_id || '-')}</td>
+          <td>
+            <div class="mini-actions">
+              <button class="secondary" onclick="fillEditProduct(${p.id})">Editar</button>
+              <button class="danger" onclick="deleteProduct(${p.id})">Desativar</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function fillEditProduct(id) {
+      const p = PRODUCTS.find(x => Number(x.id) === Number(id));
+      if (!p) return;
+
+      document.getElementById('title').value = p.title || '';
+      document.getElementById('description').value = p.description || '';
+      document.getElementById('price_cents').value = p.price_cents || 0;
+      document.getElementById('drive_file_id').value = p.drive_file_id || '';
+      document.getElementById('preview_drive_file_id').value = p.preview_drive_file_id || '';
+      document.getElementById('preview_mime').value = p.preview_mime || 'video';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setStatus('saveStatus', `Produto #${id} carregado no formulário. Se o backend tiver PUT, ajuste e salve. Se não, desative o antigo e crie outro.`);
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm(`Deseja desativar o produto #${id}?`)) return;
+      try {
+        await api(`/admin/api/products/${id}`, { method: 'DELETE' });
+        await loadProducts();
+        await loadStats();
+      } catch (e) {
+        alert(`Erro ao desativar: ${e.message}`);
+      }
+    }
+
+    async function loadOrders() {
+      try {
+        const rows = await api('/admin/api/orders');
+        document.getElementById('ordersTable').innerHTML = rows.length ? rows.map(r => `
+          <tr>
+            <td>${r.id}</td>
+            <td>${escapeHtml(String(r.telegram_user_id || '-'))}</td>
+            <td>${escapeHtml(String(r.kind || r.product_type || '-'))}</td>
+            <td>${escapeHtml(String(r.plan_code || r.product_id || r.product_ref || '-'))}</td>
+            <td>${brl(r.amount_cents)}</td>
+            <td>${tagStatus(r.status)}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="6">Nenhum pedido encontrado.</td></tr>`;
+      } catch (e) {
+        document.getElementById('ordersTable').innerHTML =
+          `<tr><td colspan="6">Erro ao carregar pedidos: ${e.message}</td></tr>`;
+      }
+    }
+
+    async function loadVips() {
+      try {
+        const rows = await api('/admin/api/vips');
+        document.getElementById('vipsTable').innerHTML = rows.length ? rows.map(r => `
+          <tr>
+            <td>${escapeHtml(String(r.telegram_user_id || '-'))}</td>
+            <td>${formatDate(r.expires_at)}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="2">Nenhum VIP encontrado.</td></tr>`;
+      } catch (e) {
+        document.getElementById('vipsTable').innerHTML =
+          `<tr><td colspan="2">Erro ao carregar VIPs: ${e.message}</td></tr>`;
+      }
+    }
+
+    function formatDate(v) {
+      if (!v) return '-';
+      const n = Number(v);
+      if (!Number.isNaN(n) && n > 1000000000) {
+        return new Date(n).toLocaleString('pt-BR');
+      }
+      const d = new Date(v);
+      if (!isNaN(d.getTime())) return d.toLocaleString('pt-BR');
+      return String(v);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    async function reloadAll() {
+      await Promise.allSettled([
+        loadStats(),
+        loadProducts(),
+        loadOrders(),
+        loadVips()
+      ]);
+    }
+
+    reloadAll();
+  </script>
 </body>
 </html>
