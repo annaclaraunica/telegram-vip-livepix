@@ -20,6 +20,73 @@ function replyCapturedFileId(ctx, label, fileId) {
 }
 
 
+function extractMediaInfoFromMessage(message) {
+  if (!message) return null;
+
+  if (message.video?.file_id) {
+    return { fileId: message.video.file_id, previewMime: "video", kind: "video" };
+  }
+
+  if (message.animation?.file_id) {
+    return { fileId: message.animation.file_id, previewMime: "gif", kind: "animation" };
+  }
+
+  if (message.document?.file_id) {
+    const mime = String(message.document.mime_type || "").toLowerCase();
+    if (mime.startsWith("video/")) {
+      return { fileId: message.document.file_id, previewMime: "video", kind: "document-video" };
+    }
+    if (mime === "image/gif" || mime === "application/gif") {
+      return { fileId: message.document.file_id, previewMime: "gif", kind: "document-gif" };
+    }
+  }
+
+  return null;
+}
+
+async function savePreviewToProduct(ctx, productId, media) {
+  const exists = db.prepare("SELECT id,title FROM products WHERE id=? LIMIT 1").get(Number(productId));
+  if (!exists) {
+    await ctx.reply("❌ Produto não encontrado.");
+    return;
+  }
+
+  db.prepare("UPDATE products SET preview_drive_file_id=?, preview_mime=? WHERE id=?")
+    .run(String(media.fileId), String(media.previewMime), Number(productId));
+
+  if (typeof invalidatePrefix === "function") {
+    try {
+      invalidatePrefix("products:");
+      invalidatePrefix("top:");
+      invalidatePrefix("menu:");
+      invalidatePrefix("metrics:");
+    } catch {}
+  }
+
+  await ctx.reply(`✅ Preview salvo no produto #${productId}\n\nTítulo: ${exists.title}\nTipo: ${media.previewMime}\nFILE_ID:\n${media.fileId}`);
+}
+
+async function savePreviewToMenu(ctx, menuKey, media) {
+  const key = String(menuKey || "").trim().toLowerCase();
+  if (!["home", "vip", "free"].includes(key)) {
+    await ctx.reply("❌ Menu inválido. Use: home, vip ou free.");
+    return;
+  }
+
+  const row = db.prepare("SELECT * FROM menu_media WHERE menu_key=?").get(key);
+  db.prepare("INSERT INTO menu_media (menu_key,preview_drive_file_id,preview_mime,caption) VALUES (?,?,?,?) ON CONFLICT(menu_key) DO UPDATE SET preview_drive_file_id=excluded.preview_drive_file_id, preview_mime=excluded.preview_mime, caption=COALESCE(menu_media.caption, excluded.caption)")
+    .run(key, String(media.fileId), String(media.previewMime), row?.caption || null);
+
+  if (typeof invalidatePrefix === "function") {
+    try {
+      invalidatePrefix("menu:");
+    } catch {}
+  }
+
+  await ctx.reply(`✅ Preview salvo no menu ${key}\nTipo: ${media.previewMime}\nFILE_ID:\n${media.fileId}`);
+}
+
+
 const app=express();
 app.use(express.json({limit:"10mb"}));
 
@@ -284,6 +351,37 @@ async function removeExpiredUsersJob(){const rows=db.prepare("SELECT telegram_us
 async function revokeExpiredDriveAccessJob(){const rows=db.prepare("SELECT * FROM drive_access WHERE expires_at <= ?").all(Date.now());for(const r of rows){try{await revokePermission({driveFileId:r.drive_file_id,permissionId:r.permission_id});}catch(e){console.log('revoke error:',e.message);}db.prepare("DELETE FROM drive_access WHERE id=?").run(r.id);}db.prepare("DELETE FROM content_links WHERE expires_at <= ?").run(Date.now());}
 
 bot.start(async ctx=>{const isNew=touchUser(ctx.from.id);if(isNew&&process.env.COVER_FILE_ID){await ctx.replyWithPhoto(process.env.COVER_FILE_ID,{caption:'🔥 *Bem-vinda ao VIP da Anna*\n\nConteúdos exclusivos, previews e acesso rápido.\n\n👇 Escolha uma opção no menu.',parse_mode:'Markdown'});}await sendMenuWithMedia(ctx,'home','Menu principal',mainMenu(INSTAGRAM_URL,FREE_GROUP_URL));});
+
+bot.command('preview', async (ctx) => {
+  const parts = String(ctx.message?.text || "").trim().split(/\s+/);
+  const productId = Number(parts[1] || 0);
+
+  if (!productId) {
+    return ctx.reply("Use assim: /preview 123\n\nDepois responda essa mensagem com o vídeo ou GIF do preview.");
+  }
+
+  return ctx.reply(`Agora responda esta mensagem com o vídeo ou GIF do preview para salvar no produto #${productId}.`, {
+    reply_markup: {
+      force_reply: true
+    }
+  });
+});
+
+bot.command('menupreview', async (ctx) => {
+  const parts = String(ctx.message?.text || "").trim().split(/\s+/);
+  const menuKey = String(parts[1] || "").trim().toLowerCase();
+
+  if (!menuKey || !["home", "vip", "free"].includes(menuKey)) {
+    return ctx.reply("Use assim: /menupreview home\nOu: /menupreview vip\nOu: /menupreview free\n\nDepois responda essa mensagem com o vídeo ou GIF.");
+  }
+
+  return ctx.reply(`Agora responda esta mensagem com o vídeo ou GIF para salvar no menu ${menuKey}.`, {
+    reply_markup: {
+      force_reply: true
+    }
+  });
+});
+
 bot.command('email', async ctx=>{const parts=(ctx.message.text||'').trim().split(/\s+/);if(parts.length<2) return ctx.reply('📧 Envie assim: /email seuemail@exemplo.com');const email=parts[1].trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ctx.reply('❌ Email inválido.');const userId=getCtxUserId(ctx);if(!userId) return ctx.reply('⚠️ Não consegui identificar seu usuário.');setUserEmail(userId,email);trackEvent(userId,'email_set');await ctx.reply(`✅ Email cadastrado: ${email}`);await processPendingGrantsForUser(ctx,email);});
 bot.command('parar', async ctx=>{db.prepare("UPDATE users SET marketing_opt_out=1 WHERE telegram_user_id=?").run(String(ctx.from.id));await ctx.reply('✅ Não vou mais enviar mensagens automáticas.');});
 bot.command('voltar', async ctx=>{db.prepare("UPDATE users SET marketing_opt_out=0 WHERE telegram_user_id=?").run(String(ctx.from.id));await ctx.reply('✅ Reativei as mensagens automáticas.');});
@@ -350,6 +448,35 @@ bot.on('document', async (ctx) => {
   } catch (e) {
     console.log('document file_id capture error:', e.message);
   }
+});
+
+
+bot.on(['video', 'animation', 'document'], async (ctx, next) => {
+  try {
+    const mediaReply = extractMediaInfoFromMessage(ctx.message);
+    const repliedText = String(ctx.message?.reply_to_message?.text || "");
+
+    if (mediaReply && repliedText) {
+      const productMatch = repliedText.match(/produto #(\d+)/i);
+      const menuMatch = repliedText.match(/menu (home|vip|free)/i);
+
+      if (productMatch) {
+        await savePreviewToProduct(ctx, Number(productMatch[1]), mediaReply);
+        return;
+      }
+
+      if (menuMatch) {
+        await savePreviewToMenu(ctx, String(menuMatch[1]).toLowerCase(), mediaReply);
+        return;
+      }
+    }
+  } catch (e) {
+    console.log('auto preview save error:', e.message);
+    await ctx.reply('⚠️ Não consegui salvar esse preview automaticamente.');
+    return;
+  }
+
+  return next();
 });
 
 bot.on('photo', async ctx=>{const photo=ctx.message.photo[ctx.message.photo.length-1];await replyCapturedFileId(ctx,'COVER_FILE_ID',photo.file_id);});

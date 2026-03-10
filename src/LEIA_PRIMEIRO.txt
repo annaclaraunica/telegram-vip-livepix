@@ -1,0 +1,48 @@
+PACOTE - PREVIEW AUTOMÁTICO POR FILE_ID
+
+Arquivo incluído:
+- src/index.js
+
+NOVO RECURSO
+Agora você pode salvar o preview sem copiar e colar o file_id manualmente.
+
+COMO USAR PARA PRODUTO
+1. No Telegram, envie:
+   /preview 12
+   (troque 12 pelo ID do produto)
+
+2. O bot vai pedir para você responder com o vídeo ou GIF.
+
+3. Responda ESSA mensagem com o vídeo ou GIF.
+   O bot salva automaticamente em:
+   - preview_drive_file_id
+   - preview_mime
+
+COMO USAR PARA MENU
+1. Envie:
+   /menupreview home
+   ou
+   /menupreview vip
+   ou
+   /menupreview free
+
+2. Responda a mensagem do bot com o vídeo ou GIF.
+
+CAPTURA DE FILE_ID
+Mesmo assim, o bot continua capturando:
+- VIDEO_FILE_ID
+- GIF_FILE_ID
+- COVER_FILE_ID
+
+IMPORTANTE
+- Se você enviar vídeo como documento, também funciona.
+- Se você enviar GIF como documento, também funciona.
+- Para salvar automaticamente, envie a mídia RESPONDENDO a mensagem do bot.
+
+COMO SUBSTITUIR
+1. Faça backup do arquivo atual.
+2. Substitua src/index.js
+3. Rode:
+   git add .
+   git commit -m "add automatic preview save by file_id"
+   git push
