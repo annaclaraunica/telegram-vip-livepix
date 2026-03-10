@@ -141,32 +141,128 @@ function createContentToken({telegramUserId,productId,driveFileId,expiresAtMs}){
 const productPreviewUrl=p=>p?.preview_drive_file_id||null;
 const productPreviewKind=p=>mediaKind(p.preview_mime);
 
-async function showProduct(ctx,idx){
-  const items=getProducts();
-  if(!items.length) return ctx.reply('Sem conteúdos cadastrados no momento.');
-  const total=items.length;const safe=((idx%total)+total)%total;const p=items[safe];
-  setAvulsoIndex(ctx.from.id,safe);trackEvent(ctx.from.id,'view_preview',p.id);addScore(ctx.from.id,2); invalidatePrefix('metrics:');
-  const metrics = getRecentMetrics(24);
-  const caption=`${scarcityLine(p, metrics)}
-${randomSocialProof(p, metrics)}
+function getCtxUserId(ctx) {
+  return (
+    ctx?.from?.id ||
+    ctx?.callbackQuery?.from?.id ||
+    ctx?.update?.callback_query?.from?.id ||
+    ctx?.message?.from?.id ||
+    null
+  );
+}
+
+async function showProduct(ctx, idx) {
+  const items = getProducts();
+
+  if (!items.length) {
+    return ctx.updateType === 'callback_query'
+      ? ctx.editMessageText('Sem conteúdos cadastrados no momento.')
+      : ctx.reply('Sem conteúdos cadastrados no momento.');
+  }
+
+  const userId = getCtxUserId(ctx);
+  if (!userId) {
+    console.log('showProduct: userId não encontrado');
+    return ctx.reply('⚠️ Não consegui identificar seu usuário. Tente novamente.');
+  }
+
+  const total = items.length;
+  const safe = ((idx % total) + total) % total;
+  const p = items[safe];
+
+  setAvulsoIndex(userId, safe);
+  trackEvent(userId, 'view_preview', p.id);
+  addScore(userId, 2);
+  invalidatePrefix('metrics:');
+
+  const caption = `${scarcityLine(p)}
+${randomSocialProof(p)}
 
 🎬 *${safeMarkdown(p.title)}*
 
-${safeMarkdown(p.description)}
+${safeMarkdown(p.description || '')}
 
-💰 R$ ${(p.price_cents/100).toFixed(2).replace('.',',')}`;
-  const keyboard=avulsoKeyboard({idx:safe,total,productId:p.id,freeGroupUrl:FREE_GROUP_URL});
-  const identifier=productPreviewUrl(p);const kind=productPreviewKind(p);
-  if(identifier){
-    try{
-      const sent = await replyWithResolvedMedia(ctx, identifier, kind, {caption,parse_mode:'Markdown',...keyboard});
-      if(sent) return;
-    }catch(e){ console.log('preview send error:', e.message); }
+💰 R$ ${(p.price_cents / 100).toFixed(2).replace('.', ',')}`;
+
+  const keyboard = avulsoKeyboard({
+    idx: safe,
+    total,
+    productId: p.id,
+    freeGroupUrl: FREE_GROUP_URL
+  });
+
+  const identifier = productPreviewUrl(p);
+  const kind = productPreviewKind(p);
+
+  if (identifier) {
+    try {
+      const sent = await replyWithResolvedMedia(ctx, identifier, kind, {
+        caption,
+        parse_mode: 'Markdown',
+        ...keyboard
+      });
+      if (sent) return;
+    } catch (e) {
+      console.log('preview send error:', e.message);
+    }
   }
-  return ctx.reply(caption,{parse_mode:'Markdown',...keyboard});
+
+  if (ctx.updateType === 'callback_query') {
+    try {
+      return await ctx.reply(caption, { parse_mode: 'Markdown', ...keyboard });
+    } catch (e) {
+      console.log('showProduct text fallback error:', e.message);
+    }
+  }
+
+  return ctx.reply(caption, { parse_mode: 'Markdown', ...keyboard });
 }
 
-async function processPendingGrantsForUser(ctx,email){const pendings=db.prepare("SELECT * FROM pending_grants WHERE telegram_user_id=?").all(String(ctx.from.id));for(const pg of pendings){try{const {permissionId}=await grantFileToEmail({driveFileId:pg.drive_file_id,email});db.prepare("INSERT INTO drive_access (telegram_user_id,email,drive_file_id,permission_id,expires_at) VALUES (?,?,?,?,?)").run(String(ctx.from.id),email,pg.drive_file_id,permissionId,pg.expires_at);const token=createContentToken({telegramUserId:ctx.from.id,productId:pg.product_id,driveFileId:pg.drive_file_id,expiresAtMs:pg.expires_at});db.prepare("INSERT INTO purchases (telegram_user_id,product_id) VALUES (?,?)").run(String(ctx.from.id),pg.product_id);db.prepare("DELETE FROM pending_grants WHERE id=?").run(pg.id);trackEvent(ctx.from.id,'content_unlocked',pg.product_id);addScore(ctx.from.id,10);await ctx.reply(`🎁 *Acesso liberado!*\n\n🔗 Link individual (1 uso):\n${process.env.PUBLIC_URL}/c/${token}\n\n⏳ Validade: 30 dias`,{parse_mode:'Markdown'});}catch(e){console.error('pending grant error:',e.message);await ctx.reply('⚠️ Tive um erro ao liberar seu conteúdo.');}}}
+async function processPendingGrantsForUser(ctx, email) {
+  const userId = getCtxUserId(ctx);
+  if (!userId) {
+    await ctx.reply('⚠️ Não consegui identificar seu usuário para liberar o conteúdo.');
+    return;
+  }
+
+  const pendings = db.prepare("SELECT * FROM pending_grants WHERE telegram_user_id=?").all(String(userId));
+
+  for (const pg of pendings) {
+    try {
+      const { permissionId } = await grantFileToEmail({ driveFileId: pg.drive_file_id, email });
+
+      db.prepare("INSERT INTO drive_access (telegram_user_id,email,drive_file_id,permission_id,expires_at) VALUES (?,?,?,?,?)")
+        .run(String(userId), email, pg.drive_file_id, permissionId, pg.expires_at);
+
+      const token = createContentToken({
+        telegramUserId: userId,
+        productId: pg.product_id,
+        driveFileId: pg.drive_file_id,
+        expiresAtMs: pg.expires_at
+      });
+
+      db.prepare("INSERT INTO purchases (telegram_user_id,product_id) VALUES (?,?)")
+        .run(String(userId), pg.product_id);
+
+      db.prepare("DELETE FROM pending_grants WHERE id=?").run(pg.id);
+
+      trackEvent(userId, 'content_unlocked', pg.product_id);
+      addScore(userId, 10);
+
+      await ctx.reply(`🎁 *Acesso liberado!*
+
+🔗 Link individual (1 uso):
+${process.env.PUBLIC_URL}/c/${token}
+
+⏳ Validade: 30 dias`, {
+        parse_mode: 'Markdown'
+      });
+    } catch (e) {
+      console.error('pending grant error:', e.message);
+      await ctx.reply('⚠️ Tive um erro ao liberar seu conteúdo.');
+    }
+  }
+}
 async function sendMarketingMessage(userId,product,extraText){const url=productPreviewUrl(product);const kind=productPreviewKind(product);const caption=`${extraText}\n\n${randomSocialProof(product)}\n${scarcityLine(product)}\n\n🎬 *${product.title}*\n💰 R$ ${(product.price_cents/100).toFixed(2).replace('.',',')}`;const reply_markup={inline_keyboard:[[{text:'💳 Comprar agora',callback_data:`BUY_PRODUCT_${product.id}`}],[{text:'🆓 Grupo FREE',url:FREE_GROUP_URL}],[{text:'📸 Instagram',url:INSTAGRAM_URL}],[{text:'🚫 Parar mensagens',callback_data:'MARKETING_STOP'}]]};
 if(url){
   const source = await resolveTelegramMediaSource(url, kind);
@@ -181,21 +277,33 @@ async function removeExpiredUsersJob(){const rows=db.prepare("SELECT telegram_us
 async function revokeExpiredDriveAccessJob(){const rows=db.prepare("SELECT * FROM drive_access WHERE expires_at <= ?").all(Date.now());for(const r of rows){try{await revokePermission({driveFileId:r.drive_file_id,permissionId:r.permission_id});}catch(e){console.log('revoke error:',e.message);}db.prepare("DELETE FROM drive_access WHERE id=?").run(r.id);}db.prepare("DELETE FROM content_links WHERE expires_at <= ?").run(Date.now());}
 
 bot.start(async ctx=>{const isNew=touchUser(ctx.from.id);if(isNew&&process.env.COVER_FILE_ID){await ctx.replyWithPhoto(process.env.COVER_FILE_ID,{caption:'🔥 *Bem-vinda ao VIP da Anna*\n\nConteúdos exclusivos, previews e acesso rápido.\n\n👇 Escolha uma opção no menu.',parse_mode:'Markdown'});}await sendMenuWithMedia(ctx,'home','Menu principal',mainMenu(INSTAGRAM_URL,FREE_GROUP_URL));});
-bot.command('email', async ctx=>{const parts=(ctx.message.text||'').trim().split(/\s+/);if(parts.length<2) return ctx.reply('📧 Envie assim: /email seuemail@exemplo.com');const email=parts[1].trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ctx.reply('❌ Email inválido.');setUserEmail(ctx.from.id,email);trackEvent(ctx.from.id,'email_set');await ctx.reply(`✅ Email cadastrado: ${email}`);await processPendingGrantsForUser(ctx,email);});
+bot.command('email', async ctx=>{const parts=(ctx.message.text||'').trim().split(/\s+/);if(parts.length<2) return ctx.reply('📧 Envie assim: /email seuemail@exemplo.com');const email=parts[1].trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ctx.reply('❌ Email inválido.');const userId=getCtxUserId(ctx);if(!userId) return ctx.reply('⚠️ Não consegui identificar seu usuário.');setUserEmail(userId,email);trackEvent(userId,'email_set');await ctx.reply(`✅ Email cadastrado: ${email}`);await processPendingGrantsForUser(ctx,email);});
 bot.command('parar', async ctx=>{db.prepare("UPDATE users SET marketing_opt_out=1 WHERE telegram_user_id=?").run(String(ctx.from.id));await ctx.reply('✅ Não vou mais enviar mensagens automáticas.');});
 bot.command('voltar', async ctx=>{db.prepare("UPDATE users SET marketing_opt_out=0 WHERE telegram_user_id=?").run(String(ctx.from.id));await ctx.reply('✅ Reativei as mensagens automáticas.');});
 bot.action('MENU_HOME', async ctx=>{await ctx.answerCbQuery();await sendMenuWithMedia(ctx,'home','Menu principal',mainMenu(INSTAGRAM_URL,FREE_GROUP_URL));});
-bot.action('MENU_VIP', async ctx=>{await ctx.answerCbQuery();trackEvent(ctx.from.id,'menu_vip');addScore(ctx.from.id,3);const plans=getPlans();if(isVipActive(ctx.from.id)){const row=getVip(ctx.from.id);return ctx.reply(`✅ VIP ativo até: ${new Date(row.expires_at).toLocaleString('pt-BR')}\n\nQuer renovar?`,vipPlansMenu(plans));}await sendMenuWithMedia(ctx,'vip','🔐 Planos VIP',vipPlansMenu(plans));});
+bot.action('MENU_VIP', async ctx=>{await ctx.answerCbQuery();const userId=getCtxUserId(ctx);if(!userId) return ctx.reply('⚠️ Não consegui identificar seu usuário.');trackEvent(userId,'menu_vip');addScore(userId,3);const plans=getPlans();if(isVipActive(userId)){const row=getVip(userId);return ctx.reply(`✅ VIP ativo até: ${new Date(row.expires_at).toLocaleString('pt-BR')}\n\nQuer renovar?`,vipPlansMenu(plans));}await sendMenuWithMedia(ctx,'vip','🔐 Planos VIP',vipPlansMenu(plans));});
 bot.action('PROMO_FREE', async ctx=>{await ctx.answerCbQuery();await sendMenuWithMedia(ctx,'free',`🆓 Grupo FREE\n\nEntre aqui: ${FREE_GROUP_URL}`,{reply_markup:{inline_keyboard:[[{text:'🆓 Entrar no grupo FREE',url:FREE_GROUP_URL}],[{text:'⬅️ Voltar',callback_data:'MENU_HOME'}]]}});});
-bot.action(/^VIP_BUY_(week|month|months3)$/, async ctx=>{await ctx.answerCbQuery();const planCode=ctx.match[1];const plan=getPlan(planCode);if(!plan) return ctx.reply('Plano inválido.');try{const token=await getLivePixToken({clientId:process.env.LIVEPIX_CLIENT_ID,clientSecret:process.env.LIVEPIX_CLIENT_SECRET});const payment=await createPayment({token,amountCents:plan.amount_cents,redirectUrl:'https://example.com/obrigado'});db.prepare("INSERT INTO orders (telegram_user_id,kind,plan_code,amount_cents,reference,status) VALUES (?, 'vip', ?, ?, ?, 'pending')").run(String(ctx.from.id),planCode,plan.amount_cents,payment.reference);trackEvent(ctx.from.id,'buy_vip_click');addScore(ctx.from.id,5);await ctx.reply(`💳 *Pagamento gerado!*\n\nPlano: *${plan.label}*\nValor: R$ ${(plan.amount_cents/100).toFixed(2).replace('.',',')}\n\n👉 Pague por aqui:\n${payment.redirectUrl}`,{parse_mode:'Markdown'});}catch(e){console.error(e);await ctx.reply('❌ Erro ao gerar pagamento.');}});
-bot.action('MENU_AVULSO', async ctx=>{await ctx.answerCbQuery();trackEvent(ctx.from.id,'menu_avulso');addScore(ctx.from.id,3);await showProduct({...ctx,updateType:'message'},getAvulsoIndex(ctx.from.id));});
+bot.action(/^VIP_BUY_(week|month|months3)$/, async ctx=>{await ctx.answerCbQuery();const userId=getCtxUserId(ctx);if(!userId) return ctx.reply('⚠️ Não consegui identificar seu usuário.');const planCode=ctx.match[1];const plan=getPlan(planCode);if(!plan) return ctx.reply('Plano inválido.');try{const token=await getLivePixToken({clientId:process.env.LIVEPIX_CLIENT_ID,clientSecret:process.env.LIVEPIX_CLIENT_SECRET});const payment=await createPayment({token,amountCents:plan.amount_cents,redirectUrl:'https://example.com/obrigado'});db.prepare("INSERT INTO orders (telegram_user_id,kind,plan_code,amount_cents,reference,status) VALUES (?, 'vip', ?, ?, ?, 'pending')").run(String(userId),planCode,plan.amount_cents,payment.reference);trackEvent(userId,'buy_vip_click');addScore(userId,5);await ctx.reply(`💳 *Pagamento gerado!*\n\nPlano: *${plan.label}*\nValor: R$ ${(plan.amount_cents/100).toFixed(2).replace('.',',')}\n\n👉 Pague por aqui:\n${payment.redirectUrl}`,{parse_mode:'Markdown'});}catch(e){console.error(e);await ctx.reply('❌ Erro ao gerar pagamento.');}});
+bot.action('MENU_AVULSO', async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const userId = getCtxUserId(ctx);
+  if (!userId) {
+    return ctx.reply('⚠️ Não consegui identificar seu usuário. Tente novamente.');
+  }
+
+  trackEvent(userId, 'menu_avulso');
+  addScore(userId, 3);
+
+  await showProduct(ctx, getAvulsoIndex(userId));
+});
 bot.action(/^AV_NEXT_(\d+)$/, async ctx=>{await ctx.answerCbQuery();await showProduct(ctx,Number(ctx.match[1])+1);});
 bot.action(/^AV_PREV_(\d+)$/, async ctx=>{await ctx.answerCbQuery();await showProduct(ctx,Number(ctx.match[1])-1);});
 bot.action('AV_NOOP', async ctx=>{await ctx.answerCbQuery();});
 bot.action('MENU_TOP', async ctx=>{await ctx.answerCbQuery();const tops=getTopProducts(5);if(!tops.length) return ctx.reply('Ainda não há vendas suficientes para mostrar ranking.');const text=tops.map((p,i)=>`${i+1}. ${p.title}${p.paid_count?` — ${p.paid_count} vendas`:''}`).join('\n');await ctx.reply(`🔥 *Mais vendidos*\n\n${text}`,{parse_mode:'Markdown'});});
 bot.action('AV_MY', async ctx=>{await ctx.answerCbQuery();const rows=db.prepare("SELECT p.id,p.title FROM purchases pu JOIN products p ON p.id=pu.product_id WHERE pu.telegram_user_id=? ORDER BY pu.id DESC LIMIT 20").all(String(ctx.from.id));if(!rows.length) return ctx.reply('🧾 Você ainda não comprou conteúdos.');const kb=rows.map(r=>[{text:`🔁 Reenviar: ${r.title}`,callback_data:`REDELIVER_${r.id}`}]);kb.push([{text:'⬅️ Voltar',callback_data:'MENU_HOME'}]);await ctx.reply('🧾 *Minhas compras*\n\nEscolha um item para gerar um novo link:',{parse_mode:'Markdown',reply_markup:{inline_keyboard:kb}});});
 bot.action(/^REDELIVER_(\d+)$/, async ctx=>{await ctx.answerCbQuery();const product=getProductById(Number(ctx.match[1]));if(!product) return ctx.reply('❌ Conteúdo não encontrado.');const email=getUserEmail(ctx.from.id);if(!email) return ctx.reply('📧 Primeiro cadastre seu email com /email seuemail@exemplo.com');if(!product.drive_file_id) return ctx.reply('⚠️ Esse item não tem Drive ID cadastrado.');const expires=Date.now()+30*24*60*60*1000;const token=createContentToken({telegramUserId:ctx.from.id,productId:product.id,driveFileId:product.drive_file_id,expiresAtMs:expires});await ctx.reply(`🔗 Novo link (1 uso):\n${process.env.PUBLIC_URL}/c/${token}\n\n⏳ Validade: 30 dias`);});
-bot.action(/^BUY_PRODUCT_(\d+)$/, async ctx=>{await ctx.answerCbQuery();const product=getProductById(Number(ctx.match[1]));if(!product) return ctx.reply('❌ Conteúdo não encontrado.');try{const token=await getLivePixToken({clientId:process.env.LIVEPIX_CLIENT_ID,clientSecret:process.env.LIVEPIX_CLIENT_SECRET});const payment=await createPayment({token,amountCents:product.price_cents,redirectUrl:'https://example.com/obrigado'});db.prepare("INSERT INTO orders (telegram_user_id,kind,product_id,amount_cents,reference,status) VALUES (?, 'product', ?, ?, ?, 'pending')").run(String(ctx.from.id),product.id,product.price_cents,payment.reference);trackEvent(ctx.from.id,'buy_click',product.id);addScore(ctx.from.id,5);await ctx.reply(`💳 *Pagamento gerado!*\n\nConteúdo: *${product.title}*\nValor: R$ ${(product.price_cents/100).toFixed(2).replace('.',',')}\n\n👉 Pague por aqui:\n${payment.redirectUrl}\n\n✅ Após confirmar, eu vou pedir seu email para liberar o acesso.`,{parse_mode:'Markdown'});}catch(e){console.error(e);await ctx.reply('❌ Erro ao gerar pagamento.');}});
+bot.action(/^BUY_PRODUCT_(\d+)$/, async ctx=>{await ctx.answerCbQuery();const userId=getCtxUserId(ctx);if(!userId) return ctx.reply('⚠️ Não consegui identificar seu usuário.');const product=getProductById(Number(ctx.match[1]));if(!product) return ctx.reply('❌ Conteúdo não encontrado.');try{const token=await getLivePixToken({clientId:process.env.LIVEPIX_CLIENT_ID,clientSecret:process.env.LIVEPIX_CLIENT_SECRET});const payment=await createPayment({token,amountCents:product.price_cents,redirectUrl:'https://example.com/obrigado'});db.prepare("INSERT INTO orders (telegram_user_id,kind,product_id,amount_cents,reference,status) VALUES (?, 'product', ?, ?, ?, 'pending')").run(String(userId),product.id,product.price_cents,payment.reference);trackEvent(userId,'buy_click',product.id);addScore(userId,5);await ctx.reply(`💳 *Pagamento gerado!*\n\nConteúdo: *${product.title}*\nValor: R$ ${(product.price_cents/100).toFixed(2).replace('.',',')}\n\n👉 Pague por aqui:\n${payment.redirectUrl}\n\n✅ Após confirmar, eu vou pedir seu email para liberar o acesso.`,{parse_mode:'Markdown'});}catch(e){console.error(e);await ctx.reply('❌ Erro ao gerar pagamento.');}});
 bot.action('MENU_SUPORTE', async ctx=>{await ctx.answerCbQuery();await ctx.reply('🆘 *Suporte VIP*\n\nFale comigo no WhatsApp:',{parse_mode:'Markdown',...supportMenu(SUPPORT_WA)});});
 bot.action('MARKETING_STOP', async ctx=>{await ctx.answerCbQuery();db.prepare("UPDATE users SET marketing_opt_out=1 WHERE telegram_user_id=?").run(String(ctx.from.id));await ctx.reply('✅ Tudo certo. Não vou mais enviar mensagens automáticas.');});
 bot.on('photo', async ctx=>{const photo=ctx.message.photo[ctx.message.photo.length-1];console.log('COVER_FILE_ID:',photo.file_id);await ctx.reply('✅ File ID capturado no console.');});
