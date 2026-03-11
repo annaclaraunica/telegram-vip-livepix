@@ -1,0 +1,26 @@
+{
+  "project": "telegram-vip-livepix",
+  "language": "javascript",
+  "framework": "nodejs",
+  "entrypoint": "src/index.js",
+  "sourceFolders": [
+    "src"
+  ],
+  "ignore": [
+    "node_modules",
+    ".git",
+    ".env"
+  ],
+  "contextFiles": [
+    "package.json",
+    "schema.sql",
+    "AGENTS.md"
+  ],
+  "rules": {
+    "database": "PostgreSQL accessed only through src/lib/db.js",
+    "payments": "LivePix webhooks must be idempotent",
+    "tokens": "content links must be one-time use",
+    "security": "never expose secrets from .env",
+    "jobs": "expiration jobs must run safely with lock"
+  }
+}
