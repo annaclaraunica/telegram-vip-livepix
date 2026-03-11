@@ -3,659 +3,231 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Anna Bot</title>
+  <title>Anna Bot Admin</title>
   <style>
-    :root{
-      --bg:#0f1115;
-      --card:#171a21;
-      --muted:#9ca3af;
-      --line:#2a2f3a;
-      --text:#f3f4f6;
-      --accent:#ff4da6;
-      --accent2:#7c3aed;
-      --ok:#22c55e;
-      --warn:#f59e0b;
-      --danger:#ef4444;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:Arial,Helvetica,sans-serif;
-      background:linear-gradient(180deg,#0d0f14,#111827);
-      color:var(--text);
-    }
-    .wrap{
-      max-width:1200px;
-      margin:0 auto;
-      padding:24px;
-    }
-    .topbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:16px;
-      margin-bottom:20px;
-      flex-wrap:wrap;
-    }
-    .title h1{
-      margin:0 0 6px;
-      font-size:28px;
-    }
-    .title p{
-      margin:0;
-      color:var(--muted);
-    }
-    .actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    button{
-      border:0;
-      border-radius:12px;
-      padding:12px 16px;
-      cursor:pointer;
-      font-weight:700;
-      color:white;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-    }
-    button.secondary{
-      background:#232936;
-      color:var(--text);
-      border:1px solid var(--line);
-    }
-    button.danger{
-      background:linear-gradient(135deg,#dc2626,#b91c1c);
-    }
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(12,1fr);
-      gap:16px;
-    }
-    .card{
-      grid-column:span 12;
-      background:rgba(23,26,33,.98);
-      border:1px solid var(--line);
-      border-radius:18px;
-      padding:18px;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
-    }
-    .card h2{
-      margin:0 0 14px;
-      font-size:20px;
-    }
-    .card p.small{
-      color:var(--muted);
-      margin-top:-6px;
-      margin-bottom:16px;
-      font-size:14px;
-    }
-    .stats{
-      display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:12px;
-    }
-    .stat{
-      background:#10141d;
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:14px;
-    }
-    .stat .label{
-      color:var(--muted);
-      font-size:13px;
-      margin-bottom:8px;
-    }
-    .stat .value{
-      font-size:24px;
-      font-weight:700;
-    }
-    .two-col{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:16px;
-    }
-    .form-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:12px;
-    }
-    .form-grid .full{
-      grid-column:1 / -1;
-    }
-    label{
-      display:block;
-      font-size:13px;
-      color:var(--muted);
-      margin-bottom:6px;
-    }
-    input, select, textarea{
-      width:100%;
-      background:#0f131b;
-      color:var(--text);
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:12px;
-      outline:none;
-    }
-    textarea{min-height:110px; resize:vertical}
-    .toolbar{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:14px;
-    }
-    .toolbar input{
-      max-width:260px;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-    th, td{
-      border-bottom:1px solid var(--line);
-      padding:10px 8px;
-      text-align:left;
-      vertical-align:top;
-    }
-    th{
-      color:var(--muted);
-      font-weight:700;
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .tag{
-      display:inline-block;
-      border-radius:999px;
-      padding:4px 10px;
-      font-size:12px;
-      font-weight:700;
-      border:1px solid var(--line);
-      background:#111827;
-    }
-    .tag.ok{color:#86efac;border-color:#166534;background:#052e16}
-    .tag.warn{color:#fde68a;border-color:#92400e;background:#451a03}
-    .tag.danger{color:#fca5a5;border-color:#7f1d1d;background:#450a0a}
-    .mono{
-      font-family:Consolas,Monaco,monospace;
-      word-break:break-all;
-    }
-    .status{
-      margin-top:10px;
-      padding:12px;
-      border-radius:12px;
-      background:#10141d;
-      border:1px solid var(--line);
-      color:var(--muted);
-      white-space:pre-wrap;
-    }
-    .mini-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    @media (max-width: 900px){
-      .stats{grid-template-columns:1fr 1fr}
-      .two-col, .form-grid{grid-template-columns:1fr}
-    }
-    @media (max-width: 640px){
-      .stats{grid-template-columns:1fr}
-      .wrap{padding:14px}
-    }
+    :root{--bg:#f4ede2;--panel:#fffaf2;--line:#e2d6c6;--text:#221a15;--muted:#7c6e65;--accent:#cb5d31;--ok:#208a5b;--warn:#b67d28;--danger:#c43b2d}
+    *{box-sizing:border-box} body{margin:0;font-family:Georgia,serif;color:var(--text);background:linear-gradient(180deg,#f8f1e6,#f0e7da)}
+    button,input,select,textarea{font:inherit} .shell{max-width:1380px;margin:0 auto;padding:20px 16px 60px}.grid,.metrics,.cards2,.cards3,.form,.logs{display:grid;gap:14px}.grid{grid-template-columns:1.2fr .8fr}.metrics{grid-template-columns:repeat(5,1fr)}.cards2{grid-template-columns:repeat(2,1fr)}.cards3,.logs{grid-template-columns:repeat(3,1fr)}.form{grid-template-columns:repeat(2,1fr)}
+    .hero,.box,.metric,.drawer,.toast{background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:0 16px 40px rgba(73,45,28,.1)} .hero,.box,.drawer{padding:18px}
+    .hero h1{margin:0;font-size:36px}.muted{color:var(--muted)} .pill{display:inline-flex;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:700}.ok{background:#e7fbf1;color:var(--ok)}.warn{background:#fff5e2;color:var(--warn)}.danger{background:#fff0ed;color:var(--danger)}
+    .top,.tabs,.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.top{margin-top:14px}.tabs{position:sticky;top:8px;z-index:5;background:rgba(255,255,255,.7);padding:8px;border:1px solid var(--line);border-radius:999px;margin:16px 0}
+    button{border:0;border-radius:999px;padding:11px 14px;cursor:pointer;font-weight:700;background:var(--accent);color:#fff} button.secondary{background:#fff;color:var(--text);border:1px solid var(--line)} button.danger{background:var(--danger)} .tab{background:transparent;color:var(--muted)} .tab.active{background:var(--text);color:#fff}
+    .metric{padding:16px}.metric .l{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)} .metric .v{font-size:28px;font-weight:700;margin-top:8px}
+    .section{display:none}.section.active{display:block} h2{margin:0 0 4px;font-size:24px} p{margin:0}
+    input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text)} textarea{min-height:100px;resize:vertical}.full{grid-column:1/-1}
+    .list{display:grid;gap:10px}.card{padding:14px;border:1px solid var(--line);border-radius:18px;background:#fff}.preview{height:180px;border:1px solid var(--line);border-radius:14px;background:#f3ebdf;margin-bottom:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}.preview img,.preview video{width:100%;height:100%;object-fit:cover}
+    .meta{display:grid;gap:5px;margin:10px 0;color:var(--muted);font-size:14px}.mono{font-family:Consolas,monospace;word-break:break-all}.empty{padding:18px;border:1px dashed var(--line);border-radius:16px;text-align:center;color:var(--muted)}
+    .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.28);display:none}.backdrop.open{display:block}.drawer{position:fixed;right:0;top:0;height:100%;width:min(500px,100%);transform:translateX(100%);transition:.2s;overflow:auto;z-index:12}.drawer.open{transform:translateX(0)}
+    .toasts{position:fixed;right:14px;bottom:14px;display:grid;gap:10px;z-index:20}.toast{padding:14px 16px}.saved{display:none;margin-left:8px;padding:4px 8px;border-radius:999px;background:#e7fbf1;color:var(--ok);font-size:12px}.saved.show{display:inline-flex}.loading{opacity:.65;pointer-events:none}
+    @media (max-width:1100px){.grid,.metrics,.cards2,.cards3,.logs{grid-template-columns:1fr 1fr}} @media (max-width:760px){.grid,.metrics,.cards2,.cards3,.logs,.form{grid-template-columns:1fr}.shell{padding:14px 12px 50px}.hero h1{font-size:28px}}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="title">
-        <h1>Anna Bot Admin</h1>
-        <p>Painel rápido para produtos, previews, importação do Drive e indicadores.</p>
-      </div>
-      <div class="actions">
-        <button class="secondary" onclick="reloadAll()">Atualizar tudo</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Visão geral</h2>
-      <div class="stats">
-        <div class="stat">
-          <div class="label">Faturamento total</div>
-          <div class="value" id="statTotal">R$ 0,00</div>
-        </div>
-        <div class="stat">
-          <div class="label">VIP</div>
-          <div class="value" id="statVip">R$ 0,00</div>
-        </div>
-        <div class="stat">
-          <div class="label">Conteúdo avulso</div>
-          <div class="value" id="statProduct">R$ 0,00</div>
-        </div>
-        <div class="stat">
-          <div class="label">Produtos ativos</div>
-          <div class="value" id="statProducts">0</div>
-        </div>
-      </div>
-    </div>
-
+  <div class="shell">
     <div class="grid">
-      <div class="card">
-        <h2>Novo produto</h2>
-        <p class="small">Cadastre título, preço, Drive ID do conteúdo e preview. Para máxima velocidade, use <strong>file_id do Telegram</strong> no preview quando puder.</p>
-        <div class="form-grid">
-          <div class="full">
-            <label>Título</label>
-            <input id="title" placeholder="Ex: Vídeo completo Anna noite especial" />
-          </div>
-          <div class="full">
-            <label>Descrição</label>
-            <textarea id="description" placeholder="Texto que aparecerá no preview do bot"></textarea>
-          </div>
-          <div>
-            <label>Preço em centavos</label>
-            <input id="price_cents" type="number" placeholder="1990" />
-          </div>
-          <div>
-            <label>Drive ID do conteúdo completo</label>
-            <input id="drive_file_id" placeholder="1AbC..." />
-          </div>
-          <div>
-            <label>Preview (file_id Telegram ou Drive ID)</label>
-            <input id="preview_drive_file_id" placeholder="BAACAg... ou 1AbC..." />
-          </div>
-          <div>
-            <label>Tipo do preview</label>
-            <select id="preview_mime">
-              <option value="video">Vídeo</option>
-              <option value="gif">GIF</option>
-            </select>
-          </div>
-        </div>
-        <div class="actions" style="margin-top:16px">
-          <button onclick="saveProduct()">Salvar produto</button>
-          <button class="secondary" onclick="clearProductForm()">Limpar</button>
-        </div>
-        <div class="status" id="saveStatus">Aguardando ação…</div>
-      </div>
-
-      <div class="card">
-        <h2>Importar uma pasta do Google Drive</h2>
-        <p class="small">Importa todos os arquivos da pasta e já cria produtos no banco.</p>
-        <div class="form-grid">
-          <div class="full">
-            <label>Folder ID</label>
-            <input id="folder_id" placeholder="1AbC..." />
-          </div>
-          <div class="full">
-            <label>Descrição padrão</label>
-            <textarea id="folder_description" placeholder="Conteúdo exclusivo."></textarea>
-          </div>
-          <div>
-            <label>Preço padrão em centavos</label>
-            <input id="folder_price" type="number" placeholder="1990" />
-          </div>
-        </div>
-        <div class="actions" style="margin-top:16px">
-          <button onclick="importFolder()">Importar pasta</button>
-        </div>
-        <div class="status" id="importStatus">Aguardando ação…</div>
-      </div>
-
-      <div class="card">
-        <h2>Menu com mídia</h2>
-        <p class="small">Define a mídia do menu principal, VIP ou FREE.</p>
-        <div class="form-grid">
-          <div>
-            <label>Menu</label>
-            <select id="menu_key">
-              <option value="home">Home</option>
-              <option value="vip">VIP</option>
-              <option value="free">FREE</option>
-            </select>
-          </div>
-          <div>
-            <label>Tipo</label>
-            <select id="menu_preview_mime">
-              <option value="video">Vídeo</option>
-              <option value="gif">GIF</option>
-            </select>
-          </div>
-          <div class="full">
-            <label>Preview (file_id Telegram ou Drive ID)</label>
-            <input id="menu_preview_drive_file_id" placeholder="BAACAg... ou 1AbC..." />
-          </div>
-          <div class="full">
-            <label>Legenda</label>
-            <textarea id="menu_caption" placeholder="Texto do menu"></textarea>
-          </div>
-        </div>
-        <div class="actions" style="margin-top:16px">
-          <button onclick="saveMenuMedia()">Salvar mídia do menu</button>
-        </div>
-        <div class="status" id="menuStatus">Aguardando ação…</div>
-      </div>
-
-      <div class="card">
-        <h2>Produtos cadastrados</h2>
-        <div class="toolbar">
-          <input id="searchProducts" placeholder="Buscar por título..." oninput="renderProducts()" />
-          <button class="secondary" onclick="loadProducts()">Recarregar lista</button>
-        </div>
-        <div style="overflow:auto">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Título</th>
-                <th>Preço</th>
-                <th>Conteúdo</th>
-                <th>Preview</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="productsTable"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Pedidos recentes</h2>
-        <div class="toolbar">
-          <button class="secondary" onclick="loadOrders()">Atualizar pedidos</button>
-        </div>
-        <div style="overflow:auto">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Usuário</th>
-                <th>Tipo</th>
-                <th>Ref</th>
-                <th>Valor</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="ordersTable"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>VIPs ativos</h2>
-        <div class="toolbar">
-          <button class="secondary" onclick="loadVips()">Atualizar VIPs</button>
-        </div>
-        <div style="overflow:auto">
-          <table>
-            <thead>
-              <tr>
-                <th>Usuário</th>
-                <th>Expira em</th>
-              </tr>
-            </thead>
-            <tbody id="vipsTable"></tbody>
-          </table>
-        </div>
-      </div>
+      <section class="hero">
+        <div class="pill">Painel operacional</div>
+        <h1>Anna Bot Control Room</h1>
+        <p class="muted">Abas por área, métricas críticas no topo e ações rápidas para operação, catálogo e remarketing.</p>
+        <div class="top"><button class="secondary" onclick="reloadAll()">Atualizar tudo</button><button onclick="openDrawer()">Novo produto</button></div>
+      </section>
+      <aside class="box">
+        <div class="actions" style="justify-content:space-between"><strong>Status geral</strong><span id="globalHealth" class="pill">carregando</span></div>
+        <div class="actions" style="justify-content:space-between"><span class="muted">Fila</span><strong id="queueMode">-</strong></div>
+        <div class="actions" style="justify-content:space-between"><span class="muted">Jobs</span><strong id="queueJobs">-</strong></div>
+        <div class="actions" style="justify-content:space-between"><span class="muted">Incidentes</span><strong id="incidentCount">0</strong></div>
+      </aside>
     </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="overview" onclick="setTab('overview')">Visão geral</button>
+      <button class="tab" data-tab="products" onclick="setTab('products')">Produtos</button>
+      <button class="tab" data-tab="vip" onclick="setTab('vip')">VIP</button>
+      <button class="tab" data-tab="remarketing" onclick="setTab('remarketing')">Remarketing</button>
+      <button class="tab" data-tab="media" onclick="setTab('media')">Mídias</button>
+      <button class="tab" data-tab="logs" onclick="setTab('logs')">Logs</button>
+    </div>
+
+    <section class="metrics">
+      <div class="metric"><div class="l">Vendas hoje</div><div id="mSales" class="v">0</div><div id="mSalesRevenue" class="muted">R$ 0,00</div></div>
+      <div class="metric"><div class="l">VIPs ativos</div><div id="mVips" class="v">0</div><div class="muted">membros</div></div>
+      <div class="metric"><div class="l">Campanhas ativas</div><div id="mCampaigns" class="v">0</div><div class="muted">remarketing</div></div>
+      <div class="metric"><div class="l">Falhas webhook 24h</div><div id="mWebhook" class="v">0</div><div class="muted">alertas</div></div>
+      <div class="metric"><div class="l">Grants pendentes</div><div id="mGrants" class="v">0</div><div class="muted">Drive</div></div>
+    </section>
+
+    <section id="tab-overview" class="section active">
+      <div class="cards2">
+        <div class="box"><h2>Incidentes</h2><p class="muted">Operação 24h e integridade do funil.</p><div id="incidentList" class="list" style="margin-top:12px"></div></div>
+        <div class="box"><h2>Ações rápidas</h2><p class="muted">Execuções seguras sem sair do painel.</p><div class="actions" style="margin-top:12px"><button class="secondary" onclick="runJob('expire-vip-access')">Expirar VIP</button><button class="secondary" onclick="runJob('revoke-drive-access')">Reprocessar Drive</button><button class="secondary" onclick="runJob('process-remarketing')">Rodar remarketing</button></div></div>
+      </div>
+      <div class="cards3" style="margin-top:14px">
+        <div class="box"><h2>Conversões</h2><div id="recentConversions" class="list" style="margin-top:12px"></div></div>
+        <div class="box"><h2>Erros</h2><div id="recentErrors" class="list" style="margin-top:12px"></div></div>
+        <div class="box"><h2>Campanhas</h2><div id="recentCampaigns" class="list" style="margin-top:12px"></div></div>
+      </div>
+    </section>
+
+    <section id="tab-products" class="section">
+      <div class="box">
+        <div class="actions" style="justify-content:space-between">
+          <div><h2>Produtos</h2><p class="muted">Cards no catálogo e drawer lateral para editar.</p></div>
+          <div class="actions"><input id="searchProducts" placeholder="Buscar por título..." oninput="renderProducts()" /><button onclick="openDrawer()">Novo produto</button></div>
+        </div>
+        <div id="productGrid" class="cards3" style="margin-top:14px"></div>
+      </div>
+    </section>
+
+    <section id="tab-vip" class="section">
+      <div class="cards2">
+        <div class="box"><h2>Planos VIP <span id="plansSaved" class="saved">salvo</span></h2><p class="muted">Preço e duração.</p><div id="plansGrid" class="cards3" style="margin-top:14px"></div><div class="top"><button onclick="savePlans()">Salvar planos</button></div></div>
+        <div class="box"><h2>VIPs ativos</h2><p class="muted">Convite manual quando precisar.</p><div id="vipGrid" class="cards2" style="margin-top:14px"></div></div>
+      </div>
+    </section>
+
+    <section id="tab-remarketing" class="section">
+      <div class="cards2">
+        <div class="box"><h2>Configurações <span id="remarketingSaved" class="saved">salvo</span></h2><div class="form" style="margin-top:14px">
+          <div><label>Remarketing ativo</label><select id="remarketing_enabled"><option value="true">Sim</option><option value="false">Não</option></select></div>
+          <div><label>IA ativa</label><select id="ai_remarketing_enabled"><option value="true">Sim</option><option value="false">Não</option></select></div>
+          <div><label>Delay passo 1</label><input id="remarketing_step1_delay_minutes" type="number" min="1" /></div>
+          <div><label>Delay passo 2</label><input id="remarketing_step2_delay_minutes" type="number" min="1" /></div>
+          <div><label>Delay passo 3</label><input id="remarketing_step3_delay_minutes" type="number" min="1" /></div>
+          <div class="full"><label>Tom da IA</label><textarea id="ai_remarketing_tone"></textarea></div>
+          <div class="full"><label>Vídeo</label><input id="remarketing_video_file_id" /></div>
+          <div class="full"><label>Legenda do vídeo</label><textarea id="remarketing_video_caption"></textarea></div>
+          <div><label>Áudio 1</label><input id="remarketing_voice_step1_file_id" /></div>
+          <div><label>Áudio 2</label><input id="remarketing_voice_step2_file_id" /></div>
+          <div><label>Áudio 3</label><input id="remarketing_voice_step3_file_id" /></div>
+          <div class="full"><label>Biblioteca de provas sociais</label><textarea id="social_proofs" placeholder="Uma prova social por linha"></textarea></div>
+          <div class="full"><label>Biblioteca de áudio etapa 1</label><textarea id="audio_library_step1" placeholder="Um file_id por linha"></textarea></div>
+          <div class="full"><label>Biblioteca de áudio etapa 2</label><textarea id="audio_library_step2" placeholder="Um file_id por linha"></textarea></div>
+          <div class="full"><label>Biblioteca de áudio etapa 3</label><textarea id="audio_library_step3" placeholder="Um file_id por linha"></textarea></div>
+          <div><label>A/B ativo</label><select id="ab_test_enabled"><option value="true">Sim</option><option value="false">Não</option></select></div>
+          <div></div>
+          <div class="full"><label>Hook variante A</label><input id="ab_variant_a_hook" /></div>
+          <div class="full"><label>Hook variante B</label><input id="ab_variant_b_hook" /></div>
+        </div><div class="top"><button onclick="saveRemarketing()">Salvar</button><button class="secondary" onclick="runJob('process-remarketing')">Rodar agora</button></div></div>
+        <div class="box"><div class="actions" style="justify-content:space-between"><h2>Campanhas</h2><div class="actions"><select id="remarketingFilterType" onchange="renderCampaigns()"><option value="">Todas</option><option value="vip">VIP</option><option value="product">Avulso</option></select><select id="remarketingFilterStatus" onchange="renderCampaigns()"><option value="">Todos os status</option><option value="active">Ativas</option><option value="converted">Convertidas</option></select></div></div><div id="campaignGrid" class="cards2" style="margin-top:14px"></div></div>
+      </div>
+    </section>
+
+    <section id="tab-media" class="section">
+      <div class="cards2">
+        <div class="box"><h2>Mídias do menu <span id="menuMediaSaved" class="saved">salvo</span></h2><div class="form" style="margin-top:14px">
+          <div><label>Menu</label><select id="menu_key"><option value="home">Home</option><option value="vip">VIP</option><option value="free">FREE</option></select></div>
+          <div><label>Tipo</label><select id="menu_preview_mime"><option value="photo">Foto</option><option value="video">Vídeo</option><option value="gif">GIF</option></select></div>
+          <div class="full"><label>Preview</label><input id="menu_preview_drive_file_id" /></div>
+          <div class="full"><label>Legenda</label><textarea id="menu_caption"></textarea></div>
+          <div class="full"><label>Chat ID para teste</label><input id="menu_test_chat_id" /></div>
+        </div><div class="top"><button class="secondary" onclick="saveMenuMedia()">Salvar mídia</button><button onclick="testMenuPreview()">Testar no Telegram</button></div></div>
+        <div class="box"><h2>Notificações <span id="notificationSaved" class="saved">salvo</span></h2><div class="form" style="margin-top:14px">
+          <div><label>Venda confirmada</label><select id="sale_confirmed_enabled"><option value="true">Sim</option><option value="false">Não</option></select></div>
+          <div><label>Telegram ativo</label><select id="notification_telegram_enabled"><option value="true">Sim</option><option value="false">Não</option></select></div>
+          <div class="full"><label>Chat ID Telegram</label><input id="notification_telegram_chat_id" /></div>
+          <div><label>Webhook ativo</label><select id="notification_webhook_enabled"><option value="true">Sim</option><option value="false">Não</option></select></div>
+          <div><label>WhatsApp ativo</label><select id="notification_whatsapp_enabled"><option value="true">Sim</option><option value="false">Não</option></select></div>
+          <div class="full"><label>URL webhook</label><input id="notification_webhook_url" /></div>
+          <div class="full"><label>Segredo</label><input id="notification_webhook_secret" /></div>
+          <div><label>Número WhatsApp</label><input id="notification_whatsapp_number" placeholder="5522988046948" /></div>
+          <div><label>Webhook provedor</label><input id="notification_whatsapp_webhook_url" /></div>
+          <div class="full"><label>Token</label><input id="notification_whatsapp_auth_token" /></div>
+        </div><div class="top"><button onclick="saveNotifications()">Salvar notificações</button><button class="secondary" onclick="testNotifications()">Testar envio</button></div></div>
+      </div>
+    </section>
+
+    <section id="tab-logs" class="section">
+      <div class="cards2">
+        <div class="box"><div class="actions" style="justify-content:space-between"><h2>Logs</h2><div class="actions"><button class="secondary" onclick="window.open('/admin/api/export/orders.csv','_blank')">Exportar pedidos CSV</button><button class="secondary" onclick="window.open('/admin/api/export/campaigns.csv','_blank')">Exportar campanhas CSV</button></div></div><div id="logGrid" class="logs" style="margin-top:14px"></div><div class="box" style="margin-top:14px;padding:14px"><h2 style="font-size:20px">Auditoria de configurações</h2><div id="auditList" class="list" style="margin-top:12px"></div></div></div>
+        <div class="box"><h2>Grants pendentes</h2><div id="pendingGrantList" class="list" style="margin-top:14px"></div></div>
+      </div>
+    </section>
   </div>
 
+  <div id="backdrop" class="backdrop" onclick="closeDrawer()"></div>
+  <div id="copyBackdrop" class="backdrop" onclick="closeCopyDrawer()"></div>
+  <aside id="drawer" class="drawer">
+    <div class="actions" style="justify-content:space-between"><div><h2 id="drawerTitle" style="margin:0">Novo produto</h2><p id="drawerSubtitle" class="muted">Cadastro rápido em drawer lateral.</p></div><button class="secondary" onclick="closeDrawer()">Fechar</button></div>
+    <div class="form" style="margin-top:14px">
+      <input type="hidden" id="d_id" />
+      <div class="full"><label>Título</label><input id="d_title" /></div>
+      <div class="full"><label>Descrição</label><textarea id="d_description"></textarea></div>
+      <div><label>Preço em centavos</label><input id="d_price" type="number" min="1" /></div>
+      <div><label>Drive ID do conteúdo</label><input id="d_drive" /></div>
+      <div><label>Preview</label><input id="d_preview" /></div>
+      <div><label>Tipo do preview</label><select id="d_mime"><option value="photo">Foto</option><option value="video">Vídeo</option><option value="gif">GIF</option></select></div>
+    </div>
+    <div class="top"><button onclick="saveProduct()">Salvar produto</button><button class="secondary" onclick="testDrawerPreview()">Testar preview</button><button class="secondary" onclick="clearDrawer()">Limpar</button></div>
+  </aside>
+
+  <aside id="copyDrawer" class="drawer">
+    <div class="actions" style="justify-content:space-between">
+      <div>
+        <h2 id="copyDrawerTitle" style="margin:0">Copy da campanha</h2>
+        <p id="copyDrawerSubtitle" class="muted">Edicao manual segura antes do reenvio.</p>
+      </div>
+      <button class="secondary" onclick="closeCopyDrawer()">Fechar</button>
+    </div>
+    <div class="form" style="margin-top:14px">
+      <input type="hidden" id="copy_campaign_id" />
+      <div><label>Segmento</label><input id="copy_target_type" disabled /></div>
+      <div><label>Status</label><input id="copy_status" disabled /></div>
+      <div class="full"><label>Lead</label><input id="copy_lead" disabled /></div>
+      <div class="full"><label>Copy sugerida</label><textarea id="copy_text" style="min-height:220px"></textarea></div>
+      <div class="full"><label>Motivo</label><input id="copy_reasoning" disabled /></div>
+    </div>
+    <div class="top">
+      <button onclick="sendManualRemarketing()">Enviar copy</button>
+      <button class="secondary" onclick="loadCampaignCopy($('copy_campaign_id').value, true)">Recarregar sugestao</button>
+    </div>
+  </aside>
+
+  <div id="toasts" class="toasts"></div>
   <script>
-    let PRODUCTS = [];
+    const S={overview:null,products:[],vips:[],plans:[],campaigns:[],logs:null,grants:[],remarketing:{},notifications:{},menuMedia:{},campaignPreview:null};
+    const $=(id)=>document.getElementById(id),brl=(c)=>`R$ ${(Number(c||0)/100).toFixed(2).replace('.',',')}`,dt=(v)=>{if(!v)return '-';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('pt-BR')},esc=(v)=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'),pc=(s)=>['fulfilled','sent','converted','ok','processed','active'].includes(String(s).toLowerCase())?'ok':['failed','error','danger'].includes(String(s).toLowerCase())?'danger':'warn';
+    async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},...opt});const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch{d={raw:t}}if(!r.ok)throw new Error(d.error||d.raw||`Erro ${r.status}`);return d}
+    function toast(m,type='info'){const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=m;$('toasts').appendChild(e);setTimeout(()=>e.remove(),3200)}
+    function saved(id){$(id).classList.add('show');setTimeout(()=>$(id).classList.remove('show'),1600)}
+    function setTab(tab){document.querySelectorAll('.tab').forEach((b)=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.section').forEach((s)=>s.classList.toggle('active',s.id===`tab-${tab}`))}
+    function setLoading(v){document.body.classList.toggle('loading',v)}
+    function renderList(id,rows,map,empty){$(id).innerHTML=rows?.length?rows.map(map).join(''):`<div class="empty">${esc(empty)}</div>`}
+    function closeCopyDrawer(){$('copyBackdrop').classList.remove('open');$('copyDrawer').classList.remove('open')}
+    function openCopyDrawer(){$('copyBackdrop').classList.add('open');$('copyDrawer').classList.add('open');setTab('remarketing')}
 
-    async function api(url, options = {}) {
-      const res = await fetch(url, {
-        headers: { 'Content-Type': 'application/json' },
-        ...options
-      });
-
-      const text = await res.text();
-      let data;
-      try { data = text ? JSON.parse(text) : {}; }
-      catch { data = { raw: text }; }
-
-      if (!res.ok) {
-        throw new Error(data?.error || data?.raw || `Erro ${res.status}`);
-      }
-
-      return data;
-    }
-
-    function brl(cents) {
-      return `R$ ${(Number(cents || 0) / 100).toFixed(2).replace('.', ',')}`;
-    }
-
-    function tagStatus(status) {
-      const s = String(status || '').toLowerCase();
-      let cls = 'warn';
-      if (s === 'paid') cls = 'ok';
-      if (s === 'pending') cls = 'warn';
-      if (s === 'cancelled' || s === 'error') cls = 'danger';
-      return `<span class="tag ${cls}">${status || '-'}</span>`;
-    }
-
-    function setStatus(id, message) {
-      document.getElementById(id).textContent = message;
-    }
-
-    function clearProductForm() {
-      ['title','description','price_cents','drive_file_id','preview_drive_file_id'].forEach(id => {
-        document.getElementById(id).value = '';
-      });
-      document.getElementById('preview_mime').value = 'video';
-    }
-
-    async function loadStats() {
-      try {
-        const stats = await api('/admin/api/stats');
-        document.getElementById('statTotal').textContent = brl(stats.total);
-        document.getElementById('statVip').textContent = brl(stats.vip);
-        document.getElementById('statProduct').textContent = brl(stats.product);
-      } catch (e) {
-        console.error(e);
-      }
-
-      try {
-        const products = await api('/admin/api/products');
-        document.getElementById('statProducts').textContent = String(products.length || 0);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    async function saveProduct() {
-      try {
-        setStatus('saveStatus', 'Salvando produto...');
-        const payload = {
-          title: document.getElementById('title').value.trim(),
-          description: document.getElementById('description').value.trim(),
-          price_cents: Number(document.getElementById('price_cents').value || 0),
-          drive_file_id: document.getElementById('drive_file_id').value.trim(),
-          preview_drive_file_id: document.getElementById('preview_drive_file_id').value.trim(),
-          preview_mime: document.getElementById('preview_mime').value
-        };
-        await api('/admin/api/products', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        setStatus('saveStatus', 'Produto salvo com sucesso.');
-        clearProductForm();
-        await loadProducts();
-        await loadStats();
-      } catch (e) {
-        setStatus('saveStatus', `Erro ao salvar:\n${e.message}`);
-      }
-    }
-
-    async function importFolder() {
-      try {
-        setStatus('importStatus', 'Importando pasta do Drive...');
-        const payload = {
-          folder_id: document.getElementById('folder_id').value.trim(),
-          description: document.getElementById('folder_description').value.trim(),
-          price_cents: Number(document.getElementById('folder_price').value || 0)
-        };
-        const data = await api('/admin/api/import-drive-folder', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        setStatus('importStatus', `Importação concluída.\nCriados: ${data.created ?? 0}`);
-        await loadProducts();
-        await loadStats();
-      } catch (e) {
-        setStatus('importStatus', `Erro na importação:\n${e.message}`);
-      }
-    }
-
-    async function saveMenuMedia() {
-      try {
-        setStatus('menuStatus', 'Salvando mídia do menu...');
-        const payload = {
-          menu_key: document.getElementById('menu_key').value,
-          caption: document.getElementById('menu_caption').value.trim(),
-          preview_drive_file_id: document.getElementById('menu_preview_drive_file_id').value.trim(),
-          preview_mime: document.getElementById('menu_preview_mime').value
-        };
-        await api('/admin/api/menu-media', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        setStatus('menuStatus', 'Mídia do menu salva com sucesso.');
-      } catch (e) {
-        setStatus('menuStatus', `Erro ao salvar mídia:\n${e.message}`);
-      }
-    }
-
-    async function loadProducts() {
-      try {
-        PRODUCTS = await api('/admin/api/products');
-        renderProducts();
-      } catch (e) {
-        document.getElementById('productsTable').innerHTML =
-          `<tr><td colspan="6">Erro ao carregar produtos: ${e.message}</td></tr>`;
-      }
-    }
-
-    function renderProducts() {
-      const q = (document.getElementById('searchProducts').value || '').trim().toLowerCase();
-      const rows = PRODUCTS.filter(p => !q || String(p.title || '').toLowerCase().includes(q));
-
-      if (!rows.length) {
-        document.getElementById('productsTable').innerHTML =
-          `<tr><td colspan="6">Nenhum produto encontrado.</td></tr>`;
-        return;
-      }
-
-      document.getElementById('productsTable').innerHTML = rows.map(p => `
-        <tr>
-          <td>${p.id}</td>
-          <td>
-            <strong>${escapeHtml(p.title || '')}</strong><br>
-            <span style="color:#9ca3af">${escapeHtml((p.description || '').slice(0, 120))}</span>
-          </td>
-          <td>${brl(p.price_cents)}</td>
-          <td class="mono">${escapeHtml(p.drive_file_id || '-')}</td>
-          <td class="mono">${escapeHtml(p.preview_drive_file_id || '-')}</td>
-          <td>
-            <div class="mini-actions">
-              <button class="secondary" onclick="fillEditProduct(${p.id})">Editar</button>
-              <button class="danger" onclick="deleteProduct(${p.id})">Desativar</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function fillEditProduct(id) {
-      const p = PRODUCTS.find(x => Number(x.id) === Number(id));
-      if (!p) return;
-
-      document.getElementById('title').value = p.title || '';
-      document.getElementById('description').value = p.description || '';
-      document.getElementById('price_cents').value = p.price_cents || 0;
-      document.getElementById('drive_file_id').value = p.drive_file_id || '';
-      document.getElementById('preview_drive_file_id').value = p.preview_drive_file_id || '';
-      document.getElementById('preview_mime').value = p.preview_mime || 'video';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setStatus('saveStatus', `Produto #${id} carregado no formulário. Se o backend tiver PUT, ajuste e salve. Se não, desative o antigo e crie outro.`);
-    }
-
-    async function deleteProduct(id) {
-      if (!confirm(`Deseja desativar o produto #${id}?`)) return;
-      try {
-        await api(`/admin/api/products/${id}`, { method: 'DELETE' });
-        await loadProducts();
-        await loadStats();
-      } catch (e) {
-        alert(`Erro ao desativar: ${e.message}`);
-      }
-    }
-
-    async function loadOrders() {
-      try {
-        const rows = await api('/admin/api/orders');
-        document.getElementById('ordersTable').innerHTML = rows.length ? rows.map(r => `
-          <tr>
-            <td>${r.id}</td>
-            <td>${escapeHtml(String(r.telegram_user_id || '-'))}</td>
-            <td>${escapeHtml(String(r.kind || r.product_type || '-'))}</td>
-            <td>${escapeHtml(String(r.plan_code || r.product_id || r.product_ref || '-'))}</td>
-            <td>${brl(r.amount_cents)}</td>
-            <td>${tagStatus(r.status)}</td>
-          </tr>
-        `).join('') : `<tr><td colspan="6">Nenhum pedido encontrado.</td></tr>`;
-      } catch (e) {
-        document.getElementById('ordersTable').innerHTML =
-          `<tr><td colspan="6">Erro ao carregar pedidos: ${e.message}</td></tr>`;
-      }
-    }
-
-    async function loadVips() {
-      try {
-        const rows = await api('/admin/api/vips');
-        document.getElementById('vipsTable').innerHTML = rows.length ? rows.map(r => `
-          <tr>
-            <td>${escapeHtml(String(r.telegram_user_id || '-'))}</td>
-            <td>${formatDate(r.expires_at)}</td>
-          </tr>
-        `).join('') : `<tr><td colspan="2">Nenhum VIP encontrado.</td></tr>`;
-      } catch (e) {
-        document.getElementById('vipsTable').innerHTML =
-          `<tr><td colspan="2">Erro ao carregar VIPs: ${e.message}</td></tr>`;
-      }
-    }
-
-    function formatDate(v) {
-      if (!v) return '-';
-      const n = Number(v);
-      if (!Number.isNaN(n) && n > 1000000000) {
-        return new Date(n).toLocaleString('pt-BR');
-      }
-      const d = new Date(v);
-      if (!isNaN(d.getTime())) return d.toLocaleString('pt-BR');
-      return String(v);
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-    }
-
-    async function reloadAll() {
-      await Promise.allSettled([
-        loadStats(),
-        loadProducts(),
-        loadOrders(),
-        loadVips()
-      ]);
-    }
-
+    async function reloadAll(){setLoading(true);try{await Promise.all([loadOverview(),loadProducts(),loadVips(),loadPlans(),loadRemarketing(),loadNotifications(),loadMenuMedia(),loadCampaigns(),loadLogs(),loadGrants()]);toast('Painel atualizado.')}catch(e){toast(e.message,'error')}finally{setLoading(false)}}
+    async function loadOverview(){S.overview=await api('/admin/api/overview');const o=S.overview,m=o.metrics||{},q=o.queue||{},h=o.health||{},inc=o.incidents||[],l=o.logs||{};$('mSales').textContent=String(m.sales_today_count||0);$('mSalesRevenue').textContent=brl(m.sales_today_revenue_cents||0);$('mVips').textContent=String(m.active_vips||0);$('mCampaigns').textContent=String(m.active_campaigns||0);$('mWebhook').textContent=String(m.webhook_failures_24h||0);$('mGrants').textContent=String(m.pending_grants||0);$('globalHealth').className=`pill ${inc.length?'warn':'ok'}`;$('globalHealth').textContent=inc.length?'atenção':'estável';$('queueMode').textContent=q.mode||'-';$('queueJobs').textContent=(h.registered_jobs||[]).join(', ')||'-';$('incidentCount').textContent=String(inc.length);renderList('incidentList',inc,(i)=>`<div class="card"><div class="pill ${i.severity}">${esc(i.severity)}</div><h3>${esc(i.title)}</h3><p>${esc(i.detail)}</p></div>`,'Nenhum incidente crítico.');renderList('recentConversions',l.recent_conversions,(r)=>`<div class="card"><strong>${esc(r.target_type||'-')} ${esc(r.target_code||r.product_id||'')}</strong><p>${brl(r.amount_cents)} · ${esc(r.telegram_username||r.telegram_user_id||'-')}</p><p>${dt(r.created_at)}</p></div>`,'Nenhuma conversão recente.');renderList('recentErrors',l.recent_errors,(r)=>`<div class="card"><div class="pill ${pc(r.status)}">${esc(r.status)}</div><h3>${esc(r.stage||r.provider||'erro')}</h3><p>${esc(r.message||'-')}</p><p>${dt(r.created_at)}</p></div>`,'Nenhum erro recente.');renderList('recentCampaigns',l.recent_campaigns,(r)=>`<div class="card"><div class="pill ${pc(r.status)}">${esc(r.status)}</div><h3>${esc(r.target_type||'-')} ${esc(r.target_code||r.product_id||'')}</h3><p>${esc(r.telegram_username||r.telegram_user_id||'-')}</p><p>${Number(r.sent_count||0)}/${Number(r.message_count||0)} envios · ${dt(r.created_at)}</p></div>`,'Nenhuma campanha recente.')}
+    function prev(p){const id=String(p.preview_drive_file_id||'').trim();if(!id)return `<div class="preview"><span class="muted">sem preview</span></div>`;if(/^https?:\/\//i.test(id))return String(p.preview_mime).toLowerCase()==='video'?`<div class="preview"><video src="${esc(id)}" muted playsinline controls preload="metadata"></video></div>`:`<div class="preview"><img src="${esc(id)}" alt=""></div>`;if(!/^(BAACAg|AgACAg|CQACAg|DQACAg|AAQ)/.test(id))return `<div class="preview"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w640" referrerpolicy="no-referrer" alt=""></div>`;const u=`/admin/api/telegram-file/${encodeURIComponent(id)}`;return String(p.preview_mime).toLowerCase()==='photo'?`<div class="preview"><img src="${u}" alt=""></div>`:`<div class="preview"><video src="${u}" muted playsinline controls preload="metadata"></video></div>`}
+    async function loadProducts(){S.products=await api('/admin/api/products');renderProducts()}
+    function renderProducts(){const q=String($('searchProducts')?.value||'').trim().toLowerCase();const rows=S.products.filter((p)=>!q||String(p.title||'').toLowerCase().includes(q));renderList('productGrid',rows,(p)=>`<div class="card">${prev(p)}<div class="pill ${p.active?'ok':'warn'}">${p.active?'ativo':'inativo'}</div><h3>${esc(p.title)}</h3><p>${esc((p.description||'').slice(0,120)||'Sem descrição')}</p><div class="meta"><div><strong>${brl(p.price_cents)}</strong></div><div>Drive <span class="mono">${esc(p.drive_file_id||'-')}</span></div><div>Preview <span class="mono">${esc(p.preview_drive_file_id||'-')}</span></div></div><div class="actions"><button class="secondary" onclick="openDrawer(${p.id})">Editar</button><button class="secondary" onclick="testProductPreview(${p.id})">Testar</button><button class="danger" onclick="disableProduct(${p.id})">Desativar</button></div></div>`,'Nenhum produto encontrado.')}
+    function openDrawer(id=null){const p=id?S.products.find((x)=>Number(x.id)===Number(id)):null;$('d_id').value=p?.id||'';$('d_title').value=p?.title||'';$('d_description').value=p?.description||'';$('d_price').value=p?.price_cents||'';$('d_drive').value=p?.drive_file_id||'';$('d_preview').value=p?.preview_drive_file_id||'';$('d_mime').value=p?.preview_mime||'video';$('drawerTitle').textContent=p?`Editar produto #${p.id}`:'Novo produto';$('drawerSubtitle').textContent=p?'Atualização lateral sem sair da lista.':'Cadastro rápido em drawer lateral.';$('backdrop').classList.add('open');$('drawer').classList.add('open');setTab('products')}
+    function closeDrawer(){$('backdrop').classList.remove('open');$('drawer').classList.remove('open')} function clearDrawer(){['d_id','d_title','d_description','d_price','d_drive','d_preview'].forEach((id)=>$(id).value='');$('d_mime').value='video'}
+    const productPayload=()=>({title:$('d_title').value.trim(),description:$('d_description').value.trim(),price_cents:Number($('d_price').value||0),drive_file_id:$('d_drive').value.trim(),preview_drive_file_id:$('d_preview').value.trim(),preview_mime:$('d_mime').value});
+    async function saveProduct(){try{const id=$('d_id').value;if(id)await api(`/admin/api/products/${id}`,{method:'PUT',body:JSON.stringify(productPayload())});else await api('/admin/api/products',{method:'POST',body:JSON.stringify(productPayload())});toast(id?'Produto atualizado.':'Produto criado.','success');closeDrawer();await loadProducts()}catch(e){toast(e.message,'error')}}
+    async function testDrawerPreview(){const chatId=prompt('Informe o chat_id para teste do preview:');if(!chatId)return;try{await api('/admin/api/test-product-preview',{method:'POST',body:JSON.stringify({chat_id:chatId,...productPayload()})});toast('Preview enviado para teste.','success')}catch(e){toast(e.message,'error')}}
+    async function testProductPreview(id){const p=S.products.find((x)=>Number(x.id)===Number(id));if(!p)return;const chatId=prompt('Informe o chat_id para teste do preview:');if(!chatId)return;try{await api('/admin/api/test-product-preview',{method:'POST',body:JSON.stringify({chat_id:chatId,title:p.title,description:p.description,price_cents:p.price_cents,preview_drive_file_id:p.preview_drive_file_id,preview_mime:p.preview_mime})});toast('Preview enviado para teste.','success')}catch(e){toast(e.message,'error')}}
+    async function disableProduct(id){if(!confirm(`Desativar o produto #${id}?`))return;try{await api(`/admin/api/products/${id}`,{method:'DELETE'});toast('Produto desativado.','success');await loadProducts()}catch(e){toast(e.message,'error')}}
+    async function loadPlans(){S.plans=await api('/admin/api/plans');const order=['week','month','months3'];$('plansGrid').innerHTML=order.map((code)=>{const p=S.plans.find((x)=>x.code===code)||{code,title:code,price_cents:0,duration_days:0};return `<div class="card"><h3>${esc(p.title)}</h3><label>Título</label><input id="plan_title_${code}" value="${esc(p.title)}" /><label style="margin-top:8px">Preço</label><input id="plan_price_${code}" type="number" min="1" value="${Number(p.price_cents||0)}" /><label style="margin-top:8px">Duração</label><input id="plan_days_${code}" type="number" min="1" value="${Number(p.duration_days||0)}" /></div>`}).join('')}
+    async function savePlans(){try{const codes=['week','month','months3'];const payload={plans:codes.map((code)=>({code,title:$(`plan_title_${code}`).value.trim(),price_cents:Number($(`plan_price_${code}`).value||0),duration_days:Number($(`plan_days_${code}`).value||0),active:true}))};await api('/admin/api/plans',{method:'PUT',body:JSON.stringify(payload)});saved('plansSaved');toast('Planos salvos.','success')}catch(e){toast(e.message,'error')}}
+    async function loadVips(){S.vips=await api('/admin/api/vips');renderList('vipGrid',S.vips,(v)=>`<div class="card"><div class="pill ${v.is_active?'ok':'warn'}">${v.is_active?'ativo':'inativo'}</div><h3>${esc(v.telegram_username||v.telegram_user_id||'-')}</h3><p>Plano ${esc(v.plan_code||'-')}</p><p class="muted">Expira ${dt(v.expires_at)}</p><div class="top"><button class="secondary" onclick="resendVip(${v.id})">Reenviar link VIP</button></div></div>`,'Nenhum VIP ativo.')}
+    async function resendVip(id){try{await api(`/admin/api/actions/resend-vip/${id}`,{method:'POST'});toast('Link VIP reenviado.','success')}catch(e){toast(e.message,'error')}}
+    async function loadRemarketing(){const [settings,conversion]=await Promise.all([api('/admin/api/remarketing-settings'),api('/admin/api/conversion-settings')]);S.remarketing=settings;const s=S.remarketing;$('remarketing_enabled').value=String(s.remarketing_enabled!==false);$('ai_remarketing_enabled').value=String(s.ai_remarketing_enabled!==false);$('remarketing_step1_delay_minutes').value=Number(s.remarketing_step1_delay_minutes||15);$('remarketing_step2_delay_minutes').value=Number(s.remarketing_step2_delay_minutes||240);$('remarketing_step3_delay_minutes').value=Number(s.remarketing_step3_delay_minutes||1440);$('ai_remarketing_tone').value=s.ai_remarketing_tone||'';$('remarketing_video_file_id').value=s.remarketing_video_file_id||'';$('remarketing_video_caption').value=s.remarketing_video_caption||'';$('remarketing_voice_step1_file_id').value=s.remarketing_voice_step1_file_id||'';$('remarketing_voice_step2_file_id').value=s.remarketing_voice_step2_file_id||'';$('remarketing_voice_step3_file_id').value=s.remarketing_voice_step3_file_id||'';$('social_proofs').value=(conversion.social_proofs||[]).join('\n');$('audio_library_step1').value=(conversion.audio_library_step1||[]).join('\n');$('audio_library_step2').value=(conversion.audio_library_step2||[]).join('\n');$('audio_library_step3').value=(conversion.audio_library_step3||[]).join('\n');$('ab_test_enabled').value=String(conversion.ab_test_enabled===true);$('ab_variant_a_hook').value=conversion.ab_variant_a_hook||'';$('ab_variant_b_hook').value=conversion.ab_variant_b_hook||''}
+    async function saveRemarketing(){try{const p={remarketing_enabled:$('remarketing_enabled').value==='true',ai_remarketing_enabled:$('ai_remarketing_enabled').value==='true',remarketing_step1_delay_minutes:Number($('remarketing_step1_delay_minutes').value||0),remarketing_step2_delay_minutes:Number($('remarketing_step2_delay_minutes').value||0),remarketing_step3_delay_minutes:Number($('remarketing_step3_delay_minutes').value||0),ai_remarketing_tone:$('ai_remarketing_tone').value.trim(),remarketing_video_file_id:$('remarketing_video_file_id').value.trim(),remarketing_video_caption:$('remarketing_video_caption').value.trim(),remarketing_voice_step1_file_id:$('remarketing_voice_step1_file_id').value.trim(),remarketing_voice_step2_file_id:$('remarketing_voice_step2_file_id').value.trim(),remarketing_voice_step3_file_id:$('remarketing_voice_step3_file_id').value.trim()};const c={social_proofs:$('social_proofs').value,audio_library_step1:$('audio_library_step1').value,audio_library_step2:$('audio_library_step2').value,audio_library_step3:$('audio_library_step3').value,ab_test_enabled:$('ab_test_enabled').value==='true',ab_variant_a_hook:$('ab_variant_a_hook').value.trim(),ab_variant_b_hook:$('ab_variant_b_hook').value.trim()};await Promise.all([api('/admin/api/remarketing-settings',{method:'PUT',body:JSON.stringify(p)}),api('/admin/api/conversion-settings',{method:'PUT',body:JSON.stringify(c)})]);saved('remarketingSaved');toast('Remarketing salvo.','success')}catch(e){toast(e.message,'error')}}
+    async function loadCampaigns(){const d=await api('/admin/api/remarketing-metrics');S.campaigns=d.campaigns||[];renderCampaigns()}
+    function renderCampaigns(){const t=$('remarketingFilterType').value,s=$('remarketingFilterStatus').value,rows=S.campaigns.filter((r)=>(!t||r.target_type===t)&&(!s||r.status===s));renderList('campaignGrid',rows,(r)=>{const score=Math.min(100,35+(Number(r.pending_count||0)>0?20:0)+(r.target_type==='vip'?15:10)+(Number(r.sent_count||0)*10));return `<div class="card"><div class="pill ${pc(r.status)}">${esc(r.status)}</div><h3>${esc(r.target_type)} ${esc(r.target_code||r.product_id||'')}</h3><p>${esc(r.telegram_username||r.telegram_user_id||'-')}</p><p class="muted">Lead score ${score}/100 · ${Number(r.sent_count||0)}/${Number(r.message_count||0)} envios</p><div class="top"><button class="secondary" onclick="loadCampaignCopy(${r.id})">Editar copy</button><button class="secondary" onclick="resendRemarketing(${r.id})">Reenviar remarketing</button></div></div>`},'Nenhuma campanha para o filtro atual.')}
+    async function loadCampaignCopy(id,keepOpen=false){try{const d=await api(`/admin/api/actions/remarketing-preview/${id}`,{method:'POST'});const p=d.preview||{};const c=p.campaign||{};const copy=p.copy||{};S.campaignPreview=p;$('copy_campaign_id').value=String(c.id||id);$('copy_target_type').value=String(c.target_type||'-');$('copy_status').value=String(c.status||'-');$('copy_lead').value=String(c.telegram_username||c.telegram_user_id||'-');$('copy_text').value=String(copy.text||'');$('copy_reasoning').value=String(copy.reasoning||'');if(!keepOpen)openCopyDrawer()}catch(e){toast(e.message,'error')}}
+    async function loadMenuMedia(){S.menuMedia=await api('/admin/api/menu-media');const apply=()=>{const next=(S.menuMedia||{})[$('menu_key').value]||{};$('menu_preview_drive_file_id').value=next.preview_drive_file_id||'';$('menu_preview_mime').value=next.preview_mime||'video';$('menu_caption').value=next.caption||''};$('menu_key').onchange=apply;apply()}
+    async function saveMenuMedia(){try{const current=S.menuMedia||{};current[$('menu_key').value]={preview_drive_file_id:$('menu_preview_drive_file_id').value.trim(),preview_mime:$('menu_preview_mime').value,caption:$('menu_caption').value.trim()};S.menuMedia=current;await api('/admin/api/menu-media',{method:'PUT',body:JSON.stringify(current)});saved('menuMediaSaved');toast('Mídia do menu salva.','success')}catch(e){toast(e.message,'error')}}
+    async function testMenuPreview(){try{await api('/admin/api/test-menu-preview',{method:'POST',body:JSON.stringify({chat_id:$('menu_test_chat_id').value.trim(),caption:$('menu_caption').value.trim(),preview_drive_file_id:$('menu_preview_drive_file_id').value.trim(),preview_mime:$('menu_preview_mime').value})});toast('Mídia do menu enviada para teste.','success')}catch(e){toast(e.message,'error')}}
+    async function loadNotifications(){S.notifications=await api('/admin/api/notification-settings');const s=S.notifications;$('sale_confirmed_enabled').value=String(s.sale_confirmed_enabled===true);$('notification_telegram_enabled').value=String(s.telegram_enabled===true);$('notification_telegram_chat_id').value=s.telegram_chat_id||'';$('notification_webhook_enabled').value=String(s.webhook_enabled===true);$('notification_webhook_url').value=s.webhook_url||'';$('notification_webhook_secret').value=s.webhook_secret||'';$('notification_whatsapp_enabled').value=String(s.whatsapp_enabled===true);$('notification_whatsapp_number').value=s.whatsapp_number||'';$('notification_whatsapp_webhook_url').value=s.whatsapp_webhook_url||'';$('notification_whatsapp_auth_token').value=s.whatsapp_auth_token||''}
+    async function saveNotifications(){try{const p={sale_confirmed_enabled:$('sale_confirmed_enabled').value==='true',telegram_enabled:$('notification_telegram_enabled').value==='true',telegram_chat_id:$('notification_telegram_chat_id').value.trim(),webhook_enabled:$('notification_webhook_enabled').value==='true',webhook_url:$('notification_webhook_url').value.trim(),webhook_secret:$('notification_webhook_secret').value.trim(),whatsapp_enabled:$('notification_whatsapp_enabled').value==='true',whatsapp_number:$('notification_whatsapp_number').value.trim(),whatsapp_webhook_url:$('notification_whatsapp_webhook_url').value.trim(),whatsapp_auth_token:$('notification_whatsapp_auth_token').value.trim()};await api('/admin/api/notification-settings',{method:'PUT',body:JSON.stringify(p)});saved('notificationSaved');toast('Notificações salvas.','success')}catch(e){toast(e.message,'error')}}
+    async function testNotifications(){try{await api('/admin/api/notification-settings/test',{method:'POST'});toast('Teste de notificação disparado.','success')}catch(e){toast(e.message,'error')}}
+    async function loadLogs(){S.logs=await api('/admin/api/logs');$('logGrid').innerHTML=[{title:'Erros',items:S.logs?.errors||[],map:(r)=>`<div class="card"><div class="pill ${pc(r.status)}">${esc(r.status)}</div><h3>${esc(r.stage||r.provider||'erro')}</h3><p>${esc(r.message||'-')}</p><p>${dt(r.created_at)}</p></div>`},{title:'Conversoes',items:S.logs?.conversions||[],map:(r)=>`<div class="card"><h3>${esc(r.target_type||'-')} ${esc(r.target_code||r.product_id||'')}</h3><p>${brl(r.amount_cents)}</p><p>${esc(r.telegram_username||'-')} · ${dt(r.created_at)}</p></div>`},{title:'Campanhas',items:S.logs?.campaigns||[],map:(r)=>`<div class="card"><div class="pill ${pc(r.status)}">${esc(r.status)}</div><h3>${esc(r.target_type||'-')}</h3><p>${esc(r.telegram_username||r.telegram_user_id||'-')}</p><p>${dt(r.created_at)}</p></div>`}].map((b)=>`<div class="box"><h2>${b.title}</h2><div class="list" style="margin-top:12px">${b.items.length?b.items.slice(0,8).map(b.map).join(''):'<div class="empty">Sem registros.</div>'}</div></div>`).join('');renderList('auditList',S.logs?.audit||[],(r)=>`<div class="card"><div class="pill">${esc(r.setting_key)}</div><h3>${esc(r.actor)}</h3><p>${dt(r.created_at)}</p></div>`,'Nenhuma alteracao auditada.')}
+    async function loadGrants(){S.grants=await api('/admin/api/pending-grants');renderList('pendingGrantList',S.grants,(r)=>`<div class="card"><h3>Pedido #${esc(r.order_id||'-')}</h3><p>Usuário ${esc(r.telegram_user_id||'-')}</p><p>Email ${esc(r.email||'ausente')}</p><p>Tentativas ${Number(r.attempts||0)} · ${dt(r.updated_at)}</p><div class="top"><button class="secondary" onclick="reprocessGrant(${r.id})">Reprocessar grant</button></div></div>`,'Nenhum grant pendente.')}
+    async function reprocessGrant(id){try{const d=await api(`/admin/api/actions/reprocess-grant/${id}`,{method:'POST'});if(!d.ok)throw new Error(d.result?.reason||'Falha ao reprocessar');toast('Grant reprocessado.','success');await loadGrants();await loadOverview()}catch(e){toast(e.message,'error')}}
+    async function runJob(job){try{await api(`/admin/api/actions/run-job/${job}`,{method:'POST'});toast(`Job ${job} executado.`,'success');await loadOverview();await loadGrants()}catch(e){toast(e.message,'error')}}
+    async function resendRemarketing(id){try{await api(`/admin/api/actions/resend-remarketing/${id}`,{method:'POST'});toast('Remarketing reenviado.','success')}catch(e){toast(e.message,'error')}}
+    async function sendManualRemarketing(){const id=Number($('copy_campaign_id').value||0);if(!id)return;if(!confirm('Enviar esta copy manual para o lead agora?'))return;try{await api(`/admin/api/actions/remarketing-send/${id}`,{method:'POST',body:JSON.stringify({text:$('copy_text').value.trim()})});toast('Copy manual enviada.','success');closeCopyDrawer();await loadCampaigns();await loadLogs()}catch(e){toast(e.message,'error')}}
     reloadAll();
   </script>
 </body>

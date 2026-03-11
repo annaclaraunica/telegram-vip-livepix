@@ -9,13 +9,15 @@ async function main() {
   await db.migrate();
 
   const botService = await createBotService();
+  const shouldRunJobs = env.appRole === 'worker' || (env.appRole === 'web' && env.runJobsInWeb);
   const app = createApp({ botService });
   const server = app.listen(env.port, () => {
     logger.info(
       {
         port: env.port,
         nodeEnv: env.nodeEnv,
-        telegramEnabled: botService.enabled
+        telegramEnabled: botService.enabled,
+        jobsEnabled: shouldRunJobs
       },
       'Servidor iniciado'
     );
@@ -29,7 +31,7 @@ async function main() {
     }
   }
 
-  const stopJobs = await startJobs({ botService });
+  const stopJobs = shouldRunJobs ? await startJobs({ botService }) : async () => {};
 
   let shuttingDown = false;
   async function shutdown(signal) {

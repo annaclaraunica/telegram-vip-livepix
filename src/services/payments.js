@@ -3,6 +3,8 @@ const logger = require('../lib/logger');
 const grants = require('./grants');
 const products = require('./products');
 const vip = require('./vip');
+const remarketing = require('./remarketing');
+const notifications = require('./notifications');
 
 function normalizePayload(payload) {
   const resource = payload && typeof payload === 'object' ? payload.resource || payload.data || payload : {};
@@ -31,6 +33,33 @@ function isPaidStatus(status) {
   return ['approved', 'completed', 'paid', 'confirmed'].includes(status);
 }
 
+async function writeAuditLog(executor, entry) {
+  const queryable = typeof executor.query === 'function' ? executor : db;
+  await queryable.query(
+    `INSERT INTO payment_audit_logs (
+      provider,
+      event_id,
+      payment_id,
+      order_id,
+      stage,
+      status,
+      message,
+      payload
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      entry.provider,
+      entry.eventId || null,
+      entry.paymentId || null,
+      entry.orderId || null,
+      entry.stage,
+      entry.status,
+      entry.message || null,
+      entry.payload ? JSON.stringify(entry.payload) : null
+    ]
+  );
+}
+
 async function claimWebhook(client, provider, eventId) {
   const inserted = await client.query(
     `INSERT INTO processed_webhooks (provider, event_id, status)
@@ -41,6 +70,13 @@ async function claimWebhook(client, provider, eventId) {
   );
 
   if (inserted.rowCount > 0) {
+    await writeAuditLog(client, {
+      provider,
+      eventId,
+      stage: 'webhook_claim',
+      status: 'processing',
+      message: 'Webhook claimed for processing'
+    });
     return { claimed: true };
   }
 
@@ -58,9 +94,23 @@ async function claimWebhook(client, provider, eventId) {
       'UPDATE processed_webhooks SET status = $3 WHERE provider = $1 AND event_id = $2',
       [provider, eventId, 'processing']
     );
+    await writeAuditLog(client, {
+      provider,
+      eventId,
+      stage: 'webhook_reclaim',
+      status: 'processing',
+      message: 'Failed webhook reclaimed'
+    });
     return { claimed: true };
   }
 
+  await writeAuditLog(client, {
+    provider,
+    eventId,
+    stage: 'webhook_duplicate',
+    status: current.rows[0].status,
+    message: 'Webhook already processed or in progress'
+  });
   return { claimed: false, status: current.rows[0].status };
 }
 
@@ -99,6 +149,7 @@ async function loadOrderForWebhook(client, payment) {
 async function persistWebhookOrder(client, payment) {
   const existing = await loadOrderForWebhook(client, payment);
   if (existing) {
+    const nextStatus = existing.status === 'fulfilled' ? 'fulfilled' : 'processing';
     const updated = await client.query(
       `UPDATE orders
        SET provider_payment_id = COALESCE(provider_payment_id, $2),
@@ -108,7 +159,7 @@ async function persistWebhookOrder(client, payment) {
            buyer_email = COALESCE(buyer_email, $6),
            buyer_phone = COALESCE(buyer_phone, $7),
            raw_payload = $8,
-           status = CASE WHEN status = 'fulfilled' THEN 'fulfilled' ELSE 'paid' END
+           status = $9
        WHERE id = $1
        RETURNING *`,
       [
@@ -119,9 +170,19 @@ async function persistWebhookOrder(client, payment) {
         payment.buyerName,
         payment.buyerEmail,
         payment.buyerPhone,
-        JSON.stringify(payment.rawPayload)
+        JSON.stringify(payment.rawPayload),
+        nextStatus
       ]
     );
+    await writeAuditLog(client, {
+      provider: 'livepix',
+      eventId: payment.eventId,
+      paymentId: payment.paymentId,
+      orderId: updated.rows[0].id,
+      stage: 'order_upsert',
+      status: updated.rows[0].status,
+      message: 'Existing order updated from webhook'
+    });
     return updated.rows[0];
   }
 
@@ -142,7 +203,7 @@ async function persistWebhookOrder(client, payment) {
       status,
       raw_payload
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'paid', $13)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'processing', $13)
     RETURNING *`,
     [
       'livepix',
@@ -161,6 +222,15 @@ async function persistWebhookOrder(client, payment) {
     ]
   );
 
+  await writeAuditLog(client, {
+    provider: 'livepix',
+    eventId: payment.eventId,
+    paymentId: payment.paymentId,
+    orderId: inserted.rows[0].id,
+    stage: 'order_create',
+    status: inserted.rows[0].status,
+    message: 'Order created from webhook'
+  });
   return inserted.rows[0];
 }
 
@@ -186,6 +256,14 @@ async function fulfillPaidOrder(order, { botService }) {
     });
 
     await db.query("UPDATE orders SET status = 'fulfilled' WHERE id = $1", [order.id]);
+    await writeAuditLog(db, {
+      provider: 'livepix',
+      paymentId: order.provider_payment_id,
+      orderId: order.id,
+      stage: 'vip_fulfillment',
+      status: 'fulfilled',
+      message: 'VIP access granted'
+    });
 
     if (botService.enabled && order.telegram_user_id) {
       const inviteLink = await botService.createVipInviteLink().catch((error) => {
@@ -238,6 +316,15 @@ async function fulfillPaidOrder(order, { botService }) {
         );
       }
 
+      await writeAuditLog(db, {
+        provider: 'livepix',
+        paymentId: order.provider_payment_id,
+        orderId: order.id,
+        stage: 'product_fulfillment',
+        status: 'awaiting_email',
+        message: 'Payment confirmed but awaiting buyer email'
+      });
+
       return { order, action: 'awaiting-email' };
     }
 
@@ -266,6 +353,15 @@ async function fulfillPaidOrder(order, { botService }) {
         );
       }
 
+      await writeAuditLog(db, {
+        provider: 'livepix',
+        paymentId: order.provider_payment_id,
+        orderId: order.id,
+        stage: 'product_fulfillment',
+        status: 'pending_drive_grant',
+        message: 'Drive grant pending after payment confirmation'
+      });
+
       return { order, action: 'pending-drive-grant' };
     }
 
@@ -273,47 +369,134 @@ async function fulfillPaidOrder(order, { botService }) {
       await botService.safeSendMessage(order.telegram_user_id, `Conteudo liberado: ${link.url}`);
     }
 
+    await writeAuditLog(db, {
+      provider: 'livepix',
+      paymentId: order.provider_payment_id,
+      orderId: order.id,
+      stage: 'product_fulfillment',
+      status: 'fulfilled',
+      message: 'Product access granted'
+    });
+
     return { order, action: 'product-fulfilled', link };
   }
 
   await db.query("UPDATE orders SET status = 'fulfilled' WHERE id = $1", [order.id]);
+  await writeAuditLog(db, {
+    provider: 'livepix',
+    paymentId: order.provider_payment_id,
+    orderId: order.id,
+    stage: 'generic_fulfillment',
+    status: 'fulfilled',
+    message: 'Generic payment fulfillment completed'
+  });
   return { order, action: 'generic-fulfilled' };
 }
 
 async function processLivePixWebhook(payload, { botService }) {
   const payment = normalizePayload(payload);
   if (!payment.eventId) {
-    return { ignored: true, reason: 'missing-event-id' };
+    return {
+      outcome: 'ignored',
+      httpStatus: 200,
+      status: 'ignored',
+      reason: 'missing-event-id'
+    };
   }
 
   const provider = 'livepix';
   const claim = await db.withTransaction(async (client) => {
     const claimed = await claimWebhook(client, provider, payment.eventId);
     if (!claimed.claimed) {
-      return { duplicate: true, status: claimed.status };
+      return {
+        outcome: 'duplicate',
+        httpStatus: 200,
+        status: 'duplicate',
+        reason: claimed.status
+      };
     }
 
     if (!isPaidStatus(payment.status)) {
+      await writeAuditLog(client, {
+        provider,
+        eventId: payment.eventId,
+        paymentId: payment.paymentId,
+        stage: 'webhook_ignore',
+        status: 'ignored',
+        message: `Webhook ignored due to status ${payment.status || 'unknown'}`,
+        payload: payment.rawPayload
+      });
       return { ignored: true, reason: `status:${payment.status || 'unknown'}` };
     }
 
     const order = await persistWebhookOrder(client, payment);
-    return { order };
+    if (order.status === 'fulfilled') {
+      return {
+        outcome: 'duplicate',
+        httpStatus: 200,
+        status: 'duplicate',
+        order,
+        reason: 'already-fulfilled'
+      };
+    }
+
+    return { outcome: 'processing', order };
   });
 
-  if (claim.duplicate || claim.ignored) {
+  if (claim.outcome === 'duplicate' || claim.ignored) {
     if (claim.ignored) {
       await markWebhook(provider, payment.eventId, 'ignored');
+      return {
+        outcome: 'ignored',
+        httpStatus: 200,
+        status: 'ignored',
+        reason: claim.reason
+      };
     }
     return claim;
   }
 
   try {
+    await remarketing.markOrderConverted(claim.order.id);
     const result = await fulfillPaidOrder(claim.order, { botService });
     await markWebhook(provider, payment.eventId, 'processed');
-    return result;
+    if (result.action !== 'already-fulfilled') {
+      notifications.notifySaleConfirmed({
+        order: result.order || claim.order,
+        action: result.action,
+        botService
+      }).catch((error) => {
+        logger.warn({ err: error, orderId: claim.order.id }, 'Falha ao disparar notificacao de venda');
+      });
+    }
+    await writeAuditLog(db, {
+      provider,
+      eventId: payment.eventId,
+      paymentId: payment.paymentId,
+      orderId: claim.order.id,
+      stage: 'webhook_complete',
+      status: 'processed',
+      message: `Webhook processed with action ${result.action}`
+    });
+    return {
+      outcome: 'processed',
+      httpStatus: 200,
+      status: 'processed',
+      orderId: claim.order.id,
+      action: result.action,
+      result
+    };
   } catch (error) {
     await markWebhook(provider, payment.eventId, 'failed');
+    await writeAuditLog(db, {
+      provider,
+      eventId: payment.eventId,
+      paymentId: payment.paymentId,
+      orderId: claim.order && claim.order.id,
+      stage: 'webhook_complete',
+      status: 'failed',
+      message: error.message
+    });
     throw error;
   }
 }

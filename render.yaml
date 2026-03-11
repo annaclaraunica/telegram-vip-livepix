@@ -1,13 +1,18 @@
 services:
   - type: web
-    name: telegram-vip-livepix-pro
+    name: telegram-vip-livepix-web
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm install
-    startCommand: node src/index.js
+    startCommand: npm run start:web
+    healthCheckPath: /readyz
     autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3000
+      - key: APP_ROLE
+        value: web
+      - key: RUN_JOBS_IN_WEB
+        value: "true"

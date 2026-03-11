@@ -115,14 +115,104 @@ async function revokeExpiredDriveAccesses() {
     'SELECT * FROM drive_access WHERE is_active = TRUE AND expires_at <= NOW() ORDER BY id ASC LIMIT 100'
   );
 
+  let revokedCount = 0;
+  let revokeFailures = 0;
+
   for (const row of rows.rows) {
     try {
       await revokePermission({ driveFileId: row.drive_file_id, permissionId: row.permission_id });
     } catch (error) {
+      revokeFailures += 1;
       logger.warn({ err: error, driveAccessId: row.id }, 'Falha ao revogar permissao Drive');
     }
 
     await db.query('UPDATE drive_access SET is_active = FALSE WHERE id = $1', [row.id]);
+    revokedCount += 1;
+  }
+
+  return {
+    scannedCount: rows.rowCount,
+    revokedCount,
+    revokeFailures
+  };
+}
+
+async function listPendingGrants(limit = 100) {
+  const result = await db.query(
+    `SELECT *
+     FROM pending_grants
+     WHERE status = 'pending'
+     ORDER BY updated_at DESC, id DESC
+     LIMIT $1`,
+    [limit]
+  );
+
+  return result.rows;
+}
+
+async function reprocessPendingGrant(pendingGrantId) {
+  const result = await db.query(
+    `SELECT *
+     FROM pending_grants
+     WHERE id = $1
+     LIMIT 1`,
+    [pendingGrantId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  const email = String(row.email || '').trim();
+  if (!email) {
+    return {
+      ok: false,
+      reason: 'missing_email',
+      pendingGrant: row
+    };
+  }
+
+  try {
+    const link = await fulfillProductOrder({
+      order: {
+        id: row.order_id,
+        telegram_user_id: row.telegram_user_id,
+        product_id: row.product_id,
+        drive_file_id: row.drive_file_id
+      },
+      email
+    });
+
+    await db.query(
+      `UPDATE pending_grants
+       SET status = 'processed',
+           updated_at = NOW(),
+           last_error = NULL
+       WHERE id = $1`,
+      [pendingGrantId]
+    );
+
+    return {
+      ok: true,
+      link
+    };
+  } catch (error) {
+    logger.warn({ err: error, pendingGrantId }, 'Falha ao reprocessar grant pendente manualmente');
+    await db.query(
+      `UPDATE pending_grants
+       SET attempts = attempts + 1,
+           last_error = $2,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [pendingGrantId, error.message]
+    );
+
+    return {
+      ok: false,
+      reason: 'grant_failed',
+      error: error.message
+    };
   }
 }
 
@@ -132,5 +222,7 @@ module.exports = {
   queuePendingGrant,
   fulfillProductOrder,
   processPendingGrantsForUser,
-  revokeExpiredDriveAccesses
+  revokeExpiredDriveAccesses,
+  listPendingGrants,
+  reprocessPendingGrant
 };

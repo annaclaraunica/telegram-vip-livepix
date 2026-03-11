@@ -55,7 +55,8 @@ async function consumeContentLink(token) {
 }
 
 async function cleanupExpiredContentLinks() {
-  await db.query('DELETE FROM content_links WHERE expires_at <= NOW()');
+  const result = await db.query('DELETE FROM content_links WHERE expires_at <= NOW()');
+  return result.rowCount;
 }
 
 module.exports = {

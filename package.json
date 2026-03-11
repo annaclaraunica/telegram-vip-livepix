@@ -6,7 +6,10 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "start:web": "node src/index.js",
+    "start:worker": "node src/worker.js",
+    "dev": "node --watch src/index.js",
+    "dev:worker": "node --watch src/worker.js"
   },
   "engines": {
     "node": ">=20"
@@ -15,8 +18,10 @@
     "axios": "^1.8.2",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
+    "express-rate-limit": "^7.5.0",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
+    "helmet": "^8.1.0",
     "bullmq": "^5.56.1",
     "ioredis": "^5.4.2",
     "pg": "^8.13.1",

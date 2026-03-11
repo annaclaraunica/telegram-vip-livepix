@@ -7,12 +7,50 @@ async function listActivePlans() {
   return result.rows;
 }
 
+async function listPlans() {
+  const result = await db.query(
+    'SELECT code, title, price_cents, duration_days, active FROM config_plans ORDER BY duration_days ASC, code ASC'
+  );
+  return result.rows;
+}
+
 async function getPlanByCode(code) {
   const result = await db.query(
     'SELECT code, title, price_cents, duration_days FROM config_plans WHERE code = $1 AND active = TRUE LIMIT 1',
     [code]
   );
   return result.rows[0] || null;
+}
+
+async function updatePlans(plans) {
+  if (!Array.isArray(plans) || plans.length === 0) {
+    return listPlans();
+  }
+
+  return db.withTransaction(async (client) => {
+    for (const plan of plans) {
+      await client.query(
+        `UPDATE config_plans
+         SET title = $2,
+             price_cents = $3,
+             duration_days = $4,
+             active = $5
+         WHERE code = $1`,
+        [
+          plan.code,
+          plan.title,
+          plan.price_cents,
+          plan.duration_days,
+          plan.active !== false
+        ]
+      );
+    }
+
+    const updated = await client.query(
+      'SELECT code, title, price_cents, duration_days, active FROM config_plans ORDER BY duration_days ASC, code ASC'
+    );
+    return updated.rows;
+  });
 }
 
 async function getActiveVipAccess(telegramUserId) {
@@ -72,12 +110,17 @@ async function expireVipAccesses() {
      RETURNING telegram_user_id`
   );
 
-  return result.rows;
+  return {
+    expiredUsers: result.rows,
+    expiredCount: result.rowCount
+  };
 }
 
 module.exports = {
   listActivePlans,
+  listPlans,
   getPlanByCode,
+  updatePlans,
   getActiveVipAccess,
   extendVipAccess,
   expireVipAccesses

@@ -22,6 +22,7 @@ function basicAuth(req, res, next) {
     return res.status(401).send('Credenciais invalidas');
   }
 
+  req.adminUser = user;
   next();
 }
 

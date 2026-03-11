@@ -1,8 +1,5 @@
 const logger = require('./logger');
 const env = require('../config/env');
-const vip = require('../services/vip');
-const grants = require('../services/grants');
-const contentLinks = require('../services/content-links');
 
 let Queue;
 let Worker;
@@ -18,7 +15,14 @@ try {
 
 const JOBS = {
   EXPIRE_VIP_ACCESS: 'expire-vip-access',
-  REVOKE_DRIVE_ACCESS: 'revoke-drive-access'
+  REVOKE_DRIVE_ACCESS: 'revoke-drive-access',
+  PROCESS_REMARKETING: 'process-remarketing'
+};
+
+let schedulerState = {
+  mode: 'uninitialized',
+  ready: false,
+  registeredJobs: []
 };
 
 function createLocalScheduler() {
@@ -42,30 +46,13 @@ function createLocalScheduler() {
       for (const timer of timers) {
         clearInterval(timer);
       }
+      schedulerState = {
+        mode: 'stopped',
+        ready: false,
+        registeredJobs: []
+      };
     }
   };
-}
-
-function getJobHandler(jobName, { botService }) {
-  if (jobName === JOBS.EXPIRE_VIP_ACCESS) {
-    return async () => {
-      const expired = await vip.expireVipAccesses();
-      for (const row of expired) {
-        if (botService.enabled) {
-          await botService.removeVipMember(Number(row.telegram_user_id));
-        }
-      }
-    };
-  }
-
-  if (jobName === JOBS.REVOKE_DRIVE_ACCESS) {
-    return async () => {
-      await grants.revokeExpiredDriveAccesses();
-      await contentLinks.cleanupExpiredContentLinks();
-    };
-  }
-
-  throw new Error(`Job desconhecido: ${jobName}`);
 }
 
 async function createRedisScheduler({ botService }) {
@@ -83,6 +70,7 @@ async function createRedisScheduler({ botService }) {
   });
 
   const queueName = `${env.redisQueuePrefix}:jobs`;
+  const handlers = new Map();
   const queue = new Queue(queueName, {
     connection,
     prefix: env.redisQueuePrefix,
@@ -102,7 +90,10 @@ async function createRedisScheduler({ botService }) {
   const worker = new Worker(
     queueName,
     async (job) => {
-      const handler = getJobHandler(job.name, { botService });
+      const handler = handlers.get(job.name);
+      if (!handler) {
+        throw new Error(`Job sem handler registrado: ${job.name}`);
+      }
       await handler();
     },
     {
@@ -122,7 +113,13 @@ async function createRedisScheduler({ botService }) {
 
   return {
     mode: 'redis',
-    async startRecurring(jobName, everyMs) {
+    async startRecurring(jobName, everyMs, handler) {
+      handlers.set(jobName, handler);
+      schedulerState = {
+        mode: 'redis',
+        ready: true,
+        registeredJobs: [...new Set([...schedulerState.registeredJobs, jobName])]
+      };
       await queue.upsertJobScheduler(
         `${jobName}:scheduler`,
         {
@@ -141,6 +138,11 @@ async function createRedisScheduler({ botService }) {
       }
       await queue.close();
       await connection.quit();
+      schedulerState = {
+        mode: 'stopped',
+        ready: false,
+        registeredJobs: []
+      };
     }
   };
 }
@@ -148,15 +150,31 @@ async function createRedisScheduler({ botService }) {
 async function createJobScheduler({ botService }) {
   try {
     const scheduler = await createRedisScheduler({ botService });
+    schedulerState = {
+      mode: scheduler.mode,
+      ready: true,
+      registeredJobs: []
+    };
     logger.info({ mode: scheduler.mode }, 'Scheduler de jobs inicializado');
     return scheduler;
   } catch (error) {
     logger.error({ err: error }, 'Falha ao iniciar BullMQ; fallback para scheduler local');
-    return createLocalScheduler();
+    const scheduler = createLocalScheduler();
+    schedulerState = {
+      mode: scheduler.mode,
+      ready: true,
+      registeredJobs: []
+    };
+    return scheduler;
   }
+}
+
+function getQueueStatus() {
+  return { ...schedulerState };
 }
 
 module.exports = {
   JOBS,
-  createJobScheduler
+  createJobScheduler,
+  getQueueStatus
 };
